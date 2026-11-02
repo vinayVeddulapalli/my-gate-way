@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/assets/fonts/Manrope.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #142e31;
+  --app-canvas: #eae6de;
+  --app-ink: #142e31;
+  --app-muted: #808683;
+  --app-line: #e7e6e1;
+  --app-coral: #17464b;
+  --app-accent: #e05d44;
+  --app-yellow: #ffe500;
+  --app-peach: #fff8c2;
+  --app-green: #44816a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-navy-950: #070d1e;
+  --color-navy-900: #0b132b;
+  --color-navy-800: #1c2541;
+  --color-navy-700: #253255;
+  --color-navy-600: #3a506b;
+  --font-sans: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #142e31;
+  font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch feedback for mobile buttons */
+.touch-press {
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+.touch-press:active {
+  transform: scale(0.98);
+  filter: brightness(0.95);
+}
+
+/* Pulse animation for waiting screens */
+@keyframes ring-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.pulse-ring-amber {
+  animation: ring-pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes green-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.pulse-ring-green {
+  animation: green-pulse 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

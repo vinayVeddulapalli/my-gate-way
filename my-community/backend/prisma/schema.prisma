@@ -1,0 +1,413 @@
+// Prisma Schema for MyCommunity Platform
+// Database: PostgreSQL with UUIDs, UTC timestamps, and strict multi-tenant community isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  COMMUNITY_ADMIN
+  RESIDENT
+  GUARD
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum ResidentType {
+  OWNER
+  TENANT
+  FAMILY_MEMBER
+}
+
+enum VisitorStatus {
+  PENDING      // Guard registered; waiting for resident approval
+  APPROVED     // Resident approved entry
+  REJECTED     // Resident rejected entry
+  CHECKED_IN   // Guard validated entry and visitor entered society
+  CHECKED_OUT  // Guard recorded visitor departure
+  EXPIRED      // Timed out without approval
+}
+
+enum VisitorPurpose {
+  GUEST
+  DELIVERY
+  CAB
+  HOME_SERVICE
+  MAINTENANCE
+  OTHER
+}
+
+enum PassStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  REVOKED
+}
+
+enum DeliveryStatus {
+  ARRIVED_AT_GATE
+  COLLECTED_BY_RESIDENT
+  LEFT_AT_GATE
+  RETURNED
+}
+
+enum DailyHelpCategory {
+  MAID
+  COOK
+  DRIVER
+  CAR_CLEANER
+  ELECTRICIAN
+  PLUMBER
+  GARDENER
+  OTHER
+}
+
+enum SosAlertType {
+  MEDICAL
+  FIRE
+  SECURITY
+  LIFT_ENTRAPMENT
+  OTHER
+}
+
+enum SosStatus {
+  ACTIVE
+  RESOLVED
+  FALSE_ALARM
+}
+
+// -------------------------------------------------------------
+// COMMUNITY & UNITS HIERARCHY
+// -------------------------------------------------------------
+
+model Community {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique // e.g. "GALAXY-HEIGHTS"
+  address     String
+  city        String
+  state       String
+  postalCode  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  blocks      Block[]
+  memberships Membership[]
+  visitors    Visitor[]
+  guestPasses GuestPass[]
+  deliveries  Delivery[]
+  dailyHelps  DailyHelp[]
+  notices     Notice[]
+  sosAlerts   SosAlert[]
+  auditLogs   AuditLog[]
+
+  @@map("communities")
+}
+
+model Block {
+  id          String    @id @default(uuid())
+  communityId String
+  name        String    // e.g. "Tower A", "Block B"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  floors      Floor[]
+  units       Unit[]
+
+  @@unique([communityId, name])
+  @@map("blocks")
+}
+
+model Floor {
+  id          String   @id @default(uuid())
+  blockId     String
+  floorNumber Int      // e.g. 1, 2, 3...
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  block       Block    @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  units       Unit[]
+
+  @@unique([blockId, floorNumber])
+  @@map("floors")
+}
+
+model Unit {
+  id          String       @id @default(uuid())
+  communityId String
+  blockId     String
+  floorId     String
+  unitNumber  String       // e.g. "101", "A-402"
+  extension   String?      // Intercom number
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  block       Block        @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  floor       Floor        @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  visitors    Visitor[]
+  guestPasses GuestPass[]
+  deliveries  Delivery[]
+  sosAlerts   SosAlert[]
+  dailyHelps  UnitDailyHelp[]
+
+  @@unique([blockId, unitNumber])
+  @@map("units")
+}
+
+// -------------------------------------------------------------
+// USERS & MEMBERSHIPS
+// -------------------------------------------------------------
+
+model User {
+  id           String        @id @default(uuid())
+  phone        String        @unique
+  email        String?       @unique
+  passwordHash String
+  fullName     String
+  avatarUrl    String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  memberships  Membership[]
+  registeredVisitors Visitor[]   @relation("GuardRegisteredVisitors")
+  approvedVisitors   Visitor[]   @relation("ResidentApprovedVisitors")
+  guestPasses  GuestPass[]
+  notices      Notice[]
+  sosAlerts    SosAlert[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Membership {
+  id           String           @id @default(uuid())
+  userId       String
+  communityId  String
+  unitId       String?          // Null for Guards and Admins who don't reside in a flat
+  role         UserRole         @default(RESIDENT)
+  residentType ResidentType?    // OWNER, TENANT, FAMILY_MEMBER
+  status       MembershipStatus @default(PENDING)
+  isApproved   Boolean          @default(false)
+  approvedAt   DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community    Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  unit         Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, communityId, unitId])
+  @@map("memberships")
+}
+
+// -------------------------------------------------------------
+// VISITOR MANAGEMENT (HIGH PRIORITY)
+// -------------------------------------------------------------
+
+model Visitor {
+  id            String         @id @default(uuid())
+  communityId   String
+  unitId        String
+  guardId       String         // Guard who logged entry
+  residentId    String?        // Resident who approved/rejected
+  name          String
+  phone         String
+  vehicleNumber String?
+  purpose       VisitorPurpose @default(GUEST)
+  status        VisitorStatus  @default(PENDING)
+  verificationCode String?     // 4-digit numeric code for fast gate verification
+  rejectionReason  String?
+  checkInTime   DateTime?
+  checkOutTime  DateTime?
+  expectedAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  community     Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  unit          Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  guard         User           @relation("GuardRegisteredVisitors", fields: [guardId], references: [id])
+  resident      User?          @relation("ResidentApprovedVisitors", fields: [residentId], references: [id])
+
+  @@index([communityId, status])
+  @@index([unitId, createdAt])
+  @@map("visitors")
+}
+
+// -------------------------------------------------------------
+// GUEST PASSES (QR CODES)
+// -------------------------------------------------------------
+
+model GuestPass {
+  id            String     @id @default(uuid())
+  communityId   String
+  unitId        String
+  creatorId     String     // Resident who generated pass
+  guestName     String
+  guestPhone    String
+  passCode      String     @unique // Unique code or token for QR code
+  purpose       String?
+  validFrom     DateTime
+  validUntil    DateTime
+  maxUses       Int        @default(1)
+  usedCount     Int        @default(0)
+  isSingleUse   Boolean    @default(true)
+  isRevoked     Boolean    @default(false)
+  status        PassStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  community     Community  @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  unit          Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  creator       User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([passCode])
+  @@map("guest_passes")
+}
+
+// -------------------------------------------------------------
+// DELIVERIES & PARCELS
+// -------------------------------------------------------------
+
+model Delivery {
+  id           String         @id @default(uuid())
+  communityId  String
+  unitId       String
+  companyName  String         // e.g. Amazon, Flipkart, Swiggy, Zomato, BlueDart
+  trackingCode String?
+  status       DeliveryStatus @default(ARRIVED_AT_GATE)
+  collectedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  community    Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  unit         Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@map("deliveries")
+}
+
+// -------------------------------------------------------------
+// DAILY HELP
+// -------------------------------------------------------------
+
+model DailyHelp {
+  id           String             @id @default(uuid())
+  communityId  String
+  name         String
+  phone        String
+  category     DailyHelpCategory  @default(MAID)
+  passCode     String?            // Unique gate pass code for helper
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  community    Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  units        UnitDailyHelp[]
+  logs         DailyHelpLog[]
+
+  @@map("daily_help")
+}
+
+model UnitDailyHelp {
+  id          String    @id @default(uuid())
+  unitId      String
+  dailyHelpId String
+  createdAt   DateTime  @default(now())
+
+  unit        Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  dailyHelp   DailyHelp @relation(fields: [dailyHelpId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, dailyHelpId])
+  @@map("unit_daily_help")
+}
+
+model DailyHelpLog {
+  id          String    @id @default(uuid())
+  dailyHelpId String
+  checkIn     DateTime  @default(now())
+  checkOut    DateTime?
+
+  dailyHelp   DailyHelp @relation(fields: [dailyHelpId], references: [id], onDelete: Cascade)
+
+  @@map("daily_help_logs")
+}
+
+// -------------------------------------------------------------
+// NOTICES & ANNOUNCEMENTS
+// -------------------------------------------------------------
+
+model Notice {
+  id          String    @id @default(uuid())
+  communityId String
+  authorId    String
+  title       String
+  content     String
+  category    String    @default("GENERAL") // GENERAL, MAINTENANCE, EMERGENCY, EVENT
+  isPinned    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("notices")
+}
+
+// -------------------------------------------------------------
+// SOS ALERTS
+// -------------------------------------------------------------
+
+model SosAlert {
+  id          String       @id @default(uuid())
+  communityId String
+  unitId      String
+  userId      String
+  alertType   SosAlertType @default(SECURITY)
+  status      SosStatus    @default(ACTIVE)
+  notes       String?
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  community   Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  unit        Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sos_alerts")
+}
+
+// -------------------------------------------------------------
+// AUDIT LOGS
+// -------------------------------------------------------------
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  communityId String?
+  userId      String?
+  action      String    // e.g. "VISITOR_APPROVED", "PASS_GENERATED"
+  details     String?   // JSON string with before/after state
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+
+  community   Community? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}

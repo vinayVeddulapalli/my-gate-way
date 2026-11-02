@@ -1,0 +1,2454 @@
+// Gateway Security: Reactive Multi-Role State Engine with Supabase Realtime Sync
+import { 
+  Community, 
+  Gate, 
+  BuildingBlock, 
+  Flat, 
+  UserProfile, 
+  VisitorRequest, 
+  GuestPass, 
+  AuditLog, 
+  VisitorStatus,
+  DeliveryCategory,
+  DailyHelper,
+  DailyHelpLog,
+  Notice,
+  SosAlert,
+  SosType,
+  SosStatus,
+  isValidStatusTransition
+} from '@/types';
+import { soundNotifier } from './audio';
+import { supabase, isSupabaseConfigured } from './supabase';
+
+export interface AppState {
+  currentCommunity: Community;
+  gates: Gate[];
+  blocks: BuildingBlock[];
+  flats: Flat[];
+  users: UserProfile[];
+  currentUser: UserProfile;
+  visitorRequests: VisitorRequest[];
+  guestPasses: GuestPass[];
+  auditLogs: AuditLog[];
+  dailyHelpers: DailyHelper[];
+  dailyHelpLogs: DailyHelpLog[];
+  notices: Notice[];
+  sosAlerts: SosAlert[];
+  autoSimulateResident: boolean;
+  connectionStatus: 'local' | 'connecting' | 'connected' | 'error';
+}
+
+const STORAGE_KEY = 'gateway_security_store_v3';
+const BROADCAST_CHANNEL = 'gateway_security_sync';
+
+// UUID Generator compatible with PostgreSQL UUID columns
+export function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+// Default Seed Data (Palm Meadows, Whitefield, Bengaluru)
+const defaultCommunity: Community = {
+  id: 'a0000000-0000-0000-0000-000000000001',
+  name: 'Palm Meadows',
+  code: 'PM-BLR',
+  address: 'Whitefield, Bengaluru',
+  city: 'Bengaluru',
+  state: 'Karnataka',
+  pincode: '560066',
+  emergency_police: '112',
+  emergency_ambulance: '108',
+  emergency_fire: '101',
+  estate_manager_phone: '+91 98450 12345',
+  visitor_retention_days: 90,
+  branding_logo_url: '/logo-palmmeadows.png',
+  created_at: '2026-10-24T06:00:00.000Z'
+};
+
+const defaultGates: Gate[] = [
+  { id: 'b0000000-0000-0000-0000-000000000001', community_id: defaultCommunity.id, name: 'Main North Gate 1 (Visitor & Cabs)', gate_type: 'main', is_active: true },
+  { id: 'b0000000-0000-0000-0000-000000000002', community_id: defaultCommunity.id, name: 'South Service Gate 2 (Deliveries & Logistics)', gate_type: 'service', is_active: true },
+  { id: 'b0000000-0000-0000-0000-000000000003', community_id: defaultCommunity.id, name: 'East Pedestrian Gate 3', gate_type: 'pedestrian', is_active: true }
+];
+
+const defaultBlocks: BuildingBlock[] = [
+  { id: 'c0000000-0000-0000-0000-000000000001', community_id: defaultCommunity.id, name: 'Tower A', total_floors: 14 },
+  { id: 'c0000000-0000-0000-0000-000000000002', community_id: defaultCommunity.id, name: 'Tower B', total_floors: 14 },
+  { id: 'c0000000-0000-0000-0000-000000000003', community_id: defaultCommunity.id, name: 'Tower C', total_floors: 18 },
+  { id: 'c0000000-0000-0000-0000-000000000004', community_id: defaultCommunity.id, name: 'Tower D', total_floors: 18 }
+];
+
+const defaultFlats: Flat[] = [
+  { 
+    id: 'd0000000-0000-0000-0000-000000001204', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[0].id, 
+    block_name: 'Tower A', 
+    flat_number: '1204', 
+    floor_number: 12, 
+    intercom_number: '1204', 
+    is_occupied: true, 
+    occupancy_type: 'self_occupied', 
+    primary_resident_name: 'Aarav Sharma', 
+    primary_resident_phone: '+91 98111 22334', 
+    owner_name: 'Aarav Sharma',
+    maintenance_amount: 4200, 
+    maintenance_status: 'paid' 
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000001205', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[0].id, 
+    block_name: 'Tower A', 
+    flat_number: '1205', 
+    floor_number: 12, 
+    intercom_number: '1205', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Rohan Verma', 
+    primary_resident_phone: '+91 98222 33445', 
+    tenant_name: 'Rohan Verma', 
+    tenant_phone: '+91 98222 33445', 
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '31 Oct 2027', 
+    monthly_rent: 42000, 
+    maintenance_amount: 4200, 
+    maintenance_status: 'paid' 
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000001206', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[0].id, 
+    block_name: 'Tower A', 
+    flat_number: '1206', 
+    floor_number: 12, 
+    intercom_number: '1206', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Pooja Hegde', 
+    primary_resident_phone: '+91 97333 44556', 
+    tenant_name: 'Pooja Hegde', 
+    tenant_phone: '+91 97333 44556', 
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '15 Mar 2028', 
+    monthly_rent: 45000, 
+    maintenance_amount: 4200, 
+    maintenance_status: 'paid' 
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000000301', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[0].id, 
+    block_name: 'Tower A', 
+    flat_number: '301', 
+    floor_number: 3, 
+    intercom_number: '1301', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Suresh Patel', 
+    primary_resident_phone: '+91 97333 44556',
+    tenant_name: 'Suresh Patel',
+    tenant_phone: '+91 97333 44556',
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '30 Nov 2026',
+    monthly_rent: 38000,
+    maintenance_amount: 3800,
+    maintenance_status: 'paid'
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000000402', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[1].id, 
+    block_name: 'Tower B', 
+    flat_number: '402', 
+    floor_number: 4, 
+    intercom_number: '2402', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Ananya Sharma', 
+    primary_resident_phone: '+91 98111 22334',
+    tenant_name: 'Ananya Sharma',
+    tenant_phone: '+91 98111 22334',
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '15 Jan 2027',
+    monthly_rent: 40000,
+    maintenance_amount: 4000,
+    maintenance_status: 'paid'
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000000403', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[1].id, 
+    block_name: 'Tower B', 
+    flat_number: '403', 
+    floor_number: 4, 
+    intercom_number: '2403', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Vikram Singh', 
+    primary_resident_phone: '+91 98222 33445',
+    tenant_name: 'Vikram Singh',
+    tenant_phone: '+91 98222 33445',
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '28 Feb 2027',
+    monthly_rent: 39000,
+    maintenance_amount: 3900,
+    maintenance_status: 'paid'
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000000701', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[1].id, 
+    block_name: 'Tower B', 
+    flat_number: '701', 
+    floor_number: 7, 
+    intercom_number: '2701', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Meera Krishnan', 
+    primary_resident_phone: '+91 98333 44556',
+    tenant_name: 'Meera Krishnan',
+    tenant_phone: '+91 98333 44556',
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '31 Aug 2027',
+    monthly_rent: 44000,
+    maintenance_amount: 4400,
+    maintenance_status: 'paid'
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000001102', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[1].id, 
+    block_name: 'Tower B', 
+    flat_number: '1102', 
+    floor_number: 11, 
+    intercom_number: '3102', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Sunil Joshi', 
+    primary_resident_phone: '+91 98444 55667',
+    tenant_name: 'Sunil Joshi',
+    tenant_phone: '+91 98444 55667',
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '30 Sep 2027',
+    monthly_rent: 48000,
+    maintenance_amount: 4800,
+    maintenance_status: 'paid'
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000000102', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[0].id, 
+    block_name: 'Tower A', 
+    flat_number: '102', 
+    floor_number: 1, 
+    intercom_number: '1102', 
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    primary_resident_name: 'Aarav Sharma (Vacant)', 
+    owner_name: 'Aarav Sharma',
+    maintenance_amount: 3500, 
+    maintenance_status: 'paid' 
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000000801', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[2].id, 
+    block_name: 'Tower C', 
+    flat_number: '801', 
+    floor_number: 8, 
+    intercom_number: '3801', 
+    is_occupied: true, 
+    occupancy_type: 'rented', 
+    primary_resident_name: 'Kishore Reddy', 
+    primary_resident_phone: '+91 97444 55667',
+    tenant_name: 'Kishore Reddy',
+    tenant_phone: '+91 97444 55667',
+    owner_name: 'Aarav Sharma',
+    lease_end_date: '31 Dec 2027',
+    monthly_rent: 52000,
+    maintenance_amount: 5200,
+    maintenance_status: 'paid'
+  }
+];
+
+const defaultUsers: UserProfile[] = [
+  {
+    id: 'e0000000-0000-0000-0000-000000000003',
+    community_id: defaultCommunity.id,
+    full_name: 'Ramesh Kumar',
+    email: 'ramesh.guard@palmmeadows.in',
+    phone: '+91 98765 43210',
+    role: 'security_guard',
+    notification_push_enabled: true,
+    notification_sms_enabled: false,
+    notification_sound_enabled: true,
+    is_active: true
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000004',
+    community_id: defaultCommunity.id,
+    full_name: 'Aarav Sharma',
+    email: 'aarav.sharma@palmmeadows.in',
+    phone: '+91 98111 22334',
+    role: 'resident',
+    flat_id: defaultFlats[0].id,
+    flat_display: 'Tower A • Floor 12 • Flat 1204',
+    owned_flat_ids: [
+      'd0000000-0000-0000-0000-000000001204',
+      'd0000000-0000-0000-0000-000000001205',
+      'd0000000-0000-0000-0000-000000001206',
+      'd0000000-0000-0000-0000-000000000301',
+      'd0000000-0000-0000-0000-000000000402',
+      'd0000000-0000-0000-0000-000000000403',
+      'd0000000-0000-0000-0000-000000000701',
+      'd0000000-0000-0000-0000-000000001102',
+      'd0000000-0000-0000-0000-000000000102',
+      'd0000000-0000-0000-0000-000000000801'
+    ],
+    notification_push_enabled: true,
+    notification_sms_enabled: true,
+    notification_sound_enabled: true,
+    is_active: true
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000005',
+    community_id: defaultCommunity.id,
+    full_name: 'Vikram Sharma',
+    email: 'vikram.sharma@gmail.com',
+    phone: '+91 98111 22335',
+    role: 'family_member',
+    flat_id: defaultFlats[0].id,
+    flat_display: 'Tower B - Begonia / Flat 402',
+    notification_push_enabled: true,
+    notification_sms_enabled: false,
+    notification_sound_enabled: true,
+    is_active: true
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000002',
+    community_id: defaultCommunity.id,
+    full_name: 'Rajesh Iyer',
+    email: 'rajesh.admin@prestige.in',
+    phone: '+91 98450 12345',
+    role: 'community_admin',
+    notification_push_enabled: true,
+    notification_sms_enabled: true,
+    notification_sound_enabled: true,
+    is_active: true
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    full_name: 'Dev Administrator',
+    email: 'superadmin@gatewaysecurity.in',
+    phone: '+91 99000 00001',
+    role: 'super_admin',
+    notification_push_enabled: true,
+    notification_sms_enabled: false,
+    notification_sound_enabled: false,
+    is_active: true
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000006',
+    community_id: defaultCommunity.id,
+    full_name: 'Arun Nair',
+    email: 'arun.nair@outlook.com',
+    phone: '+91 97222 33445',
+    role: 'resident',
+    flat_id: defaultFlats[4].id,
+    flat_display: 'Tower A - Aster / Flat 102',
+    notification_push_enabled: true,
+    notification_sms_enabled: false,
+    notification_sound_enabled: true,
+    is_active: true
+  }
+];
+
+const defaultGuestPasses: GuestPass[] = [
+  {
+    id: 'f0000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    flat_id: defaultFlats[0].id,
+    flat_number: '402',
+    block_name: 'Tower B - Begonia',
+    created_by: defaultUsers[1].id,
+    guest_name: 'Kavita Deshmukh',
+    guest_phone: '+91 99887 76655',
+    pass_code: '847291',
+    category: 'guest',
+    valid_from: '2026-10-24T05:00:00.000Z',
+    valid_until: '2026-10-25T05:00:00.000Z',
+    max_entries: 2,
+    entries_used: 0,
+    is_active: true,
+    notes: 'Family dinner guest pass',
+    created_at: '2026-10-24T05:00:00.000Z'
+  }
+];
+
+const defaultVisitorRequests: VisitorRequest[] = [
+  {
+    id: 'f1000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main Gate',
+    flat_id: defaultFlats[0].id,
+    flat_number: '1204',
+    block_name: 'Tower A',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Rahul Kumar',
+    visitor_phone: '+91 98451 98123',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    category: 'delivery',
+    delivery_category: 'e_commerce',
+    delivery_company: 'Amazon',
+    purpose: 'Amazon parcel delivery for Flat 1204',
+    vehicle_number: 'KA-03-HA-8821',
+    parcel_count: 1,
+    parcel_details: 'Amazon packaging box',
+    gate_location: 'Main Gate Parcel Desk',
+    status: 'pending',
+    consent_obtained: true,
+    created_at: '2026-10-24T06:15:00.000Z',
+    updated_at: '2026-10-24T06:15:00.000Z'
+  },
+  {
+    id: 'f1000000-0000-0000-0000-000000000010',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main North Gate 1',
+    flat_id: defaultFlats[0].id,
+    flat_number: '402',
+    block_name: 'Tower B - Begonia',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Suresh Patil (BlueDart Courier)',
+    visitor_phone: '+91 98452 77112',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
+    category: 'delivery',
+    delivery_category: 'courier',
+    delivery_company: 'BlueDart',
+    purpose: 'Courier AWB #BD8912344 (Fashion delivery)',
+    parcel_count: 1,
+    parcel_details: 'Myntra apparel package • AWB #BD8912344',
+    parcel_photo_path: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=400&q=80',
+    gate_location: 'Gate 1 Parcel Desk, Shelf B-4',
+    handover_status: 'at_gate',
+    collection_otp: '6824',
+    status: 'leave_at_gate',
+    consent_obtained: true,
+    decision_by: defaultUsers[1].id,
+    decision_by_name: 'Ananya Sharma',
+    decision_at: '2026-10-24T06:20:00.000Z',
+    created_at: '2026-10-24T06:05:00.000Z',
+    updated_at: '2026-10-24T06:20:00.000Z'
+  },
+  {
+    id: 'f1000000-0000-0000-0000-000000000011',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main North Gate 1',
+    flat_id: defaultFlats[0].id,
+    flat_number: '402',
+    block_name: 'Tower B - Begonia',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Manoj Kumar (Amazon Delivery)',
+    visitor_phone: '+91 98453 99881',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80',
+    category: 'delivery',
+    delivery_category: 'e_commerce',
+    delivery_company: 'Amazon',
+    purpose: 'Amazon prime delivery order #402-881920',
+    parcel_count: 2,
+    parcel_details: 'Electronics cartons (2 packages)',
+    gate_location: 'Gate 1 Parcel Desk',
+    handover_status: 'collected',
+    collection_otp: '3157',
+    status: 'collected',
+    consent_obtained: true,
+    decision_by: defaultUsers[1].id,
+    decision_by_name: 'Ananya Sharma',
+    decision_at: '2026-10-24T04:15:00.000Z',
+    collected_at: '2026-10-24T05:30:00.000Z',
+    collected_by_name: 'Ananya Sharma (Owner)',
+    handover_guard_id: defaultUsers[0].id,
+    handover_guard_name: 'Ramesh Kumar',
+    created_at: '2026-10-24T04:00:00.000Z',
+    updated_at: '2026-10-24T05:30:00.000Z'
+  },
+  {
+    id: 'f1000000-0000-0000-0000-000000000002',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main North Gate 1',
+    flat_id: defaultFlats[2].id,
+    flat_number: '701',
+    block_name: 'Tower B - Begonia',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Karthik Selvan',
+    visitor_phone: '+91 99123 44889',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    category: 'service',
+    purpose: 'Urban Company Split AC Servicing',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: defaultUsers[1].id,
+    decision_by_name: 'Meera Krishnan',
+    decision_at: '2026-10-24T05:40:00.000Z',
+    check_in_time: '2026-10-24T05:42:00.000Z',
+    checked_in_by: defaultUsers[0].id,
+    created_at: '2026-10-24T05:38:00.000Z',
+    updated_at: '2026-10-24T05:42:00.000Z'
+  },
+  {
+    id: 'f1000000-0000-0000-0000-000000000003',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main North Gate 1',
+    flat_id: defaultFlats[0].id,
+    flat_number: '402',
+    block_name: 'Tower B - Begonia',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Sunita Rao',
+    visitor_phone: '+91 97412 33110',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
+    category: 'guest',
+    purpose: 'Personal guest visit',
+    status: 'checked_out',
+    consent_obtained: true,
+    decision_by: defaultUsers[1].id,
+    decision_by_name: 'Ananya Sharma',
+    decision_at: '2026-10-24T04:00:00.000Z',
+    check_in_time: '2026-10-24T04:02:00.000Z',
+    check_out_time: '2026-10-24T05:00:00.000Z',
+    checked_in_by: defaultUsers[0].id,
+    checked_out_by: defaultUsers[0].id,
+    created_at: '2026-10-24T03:58:00.000Z',
+    updated_at: '2026-10-24T05:00:00.000Z'
+  },
+  {
+    id: 'f1000000-0000-0000-0000-000000000004',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main North Gate 1',
+    flat_id: defaultFlats[4].id,
+    flat_number: '102',
+    block_name: 'Tower A - Aster',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Unverified Sales Rep',
+    visitor_phone: '+91 91234 56789',
+    category: 'service',
+    purpose: 'Door to door water purifier promotion',
+    status: 'rejected',
+    consent_obtained: true,
+    decision_by: defaultUsers[4].id,
+    decision_by_name: 'Arun Nair',
+    decision_at: '2026-10-24T03:00:00.000Z',
+    rejection_reason: 'Unsolicited salesperson, strictly denied entry',
+    created_at: '2026-10-24T02:55:00.000Z',
+    updated_at: '2026-10-24T03:00:00.000Z'
+  }
+];
+
+const defaultAuditLogs: AuditLog[] = [
+  {
+    id: 'f2000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    actor_id: defaultUsers[0].id,
+    actor_name: 'Ramesh Kumar',
+    actor_role: 'security_guard',
+    action: 'REGISTER_VISITOR',
+    entity_type: 'visitor_requests',
+    entity_id: 'f1000000-0000-0000-0000-000000000001',
+    metadata: { visitor: 'Mohammed Faisal', category: 'delivery', flat: 'B-402' },
+    created_at: '2026-10-24T06:15:00.000Z'
+  },
+  {
+    id: 'f2000000-0000-0000-0000-000000000002',
+    community_id: defaultCommunity.id,
+    actor_id: defaultUsers[0].id,
+    actor_name: 'Ramesh Kumar',
+    actor_role: 'security_guard',
+    action: 'CHECK_IN',
+    entity_type: 'visitor_requests',
+    entity_id: 'f1000000-0000-0000-0000-000000000002',
+    metadata: { visitor: 'Karthik Selvan', flat: 'B-701' },
+    created_at: '2026-10-24T05:42:00.000Z'
+  }
+];
+
+const defaultDailyHelpers: DailyHelper[] = [
+  {
+    id: 'h0000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    name: 'Sunita Devi',
+    phone: '+91 98765 11223',
+    category: 'maid',
+    pass_code: '1001',
+    assigned_flat_ids: [defaultFlats[0].id, defaultFlats[1].id], // Flat 402, 403
+    is_active: true,
+    is_inside: true,
+    current_check_in_time: '2026-10-30T08:15:00.000Z',
+    created_at: '2026-10-24T05:00:00.000Z'
+  },
+  {
+    id: 'h0000000-0000-0000-0000-000000000002',
+    community_id: defaultCommunity.id,
+    name: 'Ramesh Yadav',
+    phone: '+91 98765 22334',
+    category: 'driver',
+    pass_code: '1002',
+    assigned_flat_ids: [defaultFlats[0].id], // Flat 402
+    is_active: true,
+    is_inside: false,
+    created_at: '2026-10-24T05:00:00.000Z'
+  },
+  {
+    id: 'h0000000-0000-0000-0000-000000000003',
+    community_id: defaultCommunity.id,
+    name: 'Geeta Bai',
+    phone: '+91 98765 33445',
+    category: 'cook',
+    pass_code: '1003',
+    assigned_flat_ids: [defaultFlats[2].id], // Flat 701
+    is_active: true,
+    is_inside: false,
+    created_at: '2026-10-24T05:00:00.000Z'
+  },
+  {
+    id: 'h0000000-0000-0000-0000-000000000004',
+    community_id: defaultCommunity.id,
+    name: 'Santosh Kumar',
+    phone: '+91 98765 44556',
+    category: 'car_cleaner',
+    pass_code: '1004',
+    assigned_flat_ids: [defaultFlats[0].id, defaultFlats[3].id], // Flat 402, 1102
+    is_active: true,
+    is_inside: false,
+    created_at: '2026-10-24T05:00:00.000Z'
+  }
+];
+
+const defaultDailyHelpLogs: DailyHelpLog[] = [
+  {
+    id: 'hl000000-0000-0000-0000-000000000001',
+    helper_id: defaultDailyHelpers[0].id,
+    helper_name: 'Sunita Devi',
+    category: 'maid',
+    community_id: defaultCommunity.id,
+    gate_id: defaultGates[0].id,
+    gate_name: 'Main North Gate 1',
+    check_in_time: '2026-10-30T08:15:00.000Z',
+    guard_id: defaultUsers[0].id,
+    guard_name: 'Ramesh Kumar'
+  }
+];
+
+const defaultNotices: Notice[] = [
+  {
+    id: 'n0000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    title: 'A little maintenance. A better community.',
+    content: 'The water tanks in Tower A will be cleaned on Sunday, 10 AM–12 PM. Please store enough water beforehand. Thank you for helping us keep our community in great shape.',
+    category: 'maintenance',
+    is_pinned: true,
+    author_id: defaultUsers[2].id,
+    author_name: 'Estate Management Office',
+    created_at: '2026-10-31T08:00:00.000Z'
+  },
+  {
+    id: 'n0000000-0000-0000-0000-000000000002',
+    community_id: defaultCommunity.id,
+    title: 'Society Diwali Cultural Evening & Rangoli Showcase',
+    content: 'All residents and families are warmly invited to the Annual Diwali Celebration at the Central Clubhouse Amphitheatre this Sunday from 6:30 PM onwards. Sweets, music, and cultural games for kids!',
+    category: 'event',
+    is_pinned: true,
+    author_id: defaultUsers[2].id,
+    author_name: 'Cultural Committee',
+    created_at: '2026-10-28T09:30:00.000Z'
+  },
+  {
+    id: 'n0000000-0000-0000-0000-000000000003',
+    community_id: defaultCommunity.id,
+    title: 'Swimming Pool Hygiene & Chemical Treatment Routine',
+    content: 'The central swimming pool and kids wading pool will be closed on Tuesday between 06:00 AM and 02:00 PM for deep chlorination and vacuuming. Thank you for your cooperation.',
+    category: 'general',
+    is_pinned: false,
+    author_id: defaultUsers[2].id,
+    author_name: 'Estate Management Office',
+    created_at: '2026-10-27T11:00:00.000Z'
+  }
+];
+
+const defaultSosAlerts: SosAlert[] = [];
+
+export function getBaselineState(): AppState {
+  return {
+    currentCommunity: defaultCommunity,
+    gates: defaultGates,
+    blocks: defaultBlocks,
+    flats: defaultFlats,
+    users: defaultUsers,
+    currentUser: defaultUsers[0], // Default: Security Guard
+    visitorRequests: defaultVisitorRequests,
+    guestPasses: defaultGuestPasses,
+    auditLogs: defaultAuditLogs,
+    dailyHelpers: defaultDailyHelpers,
+    dailyHelpLogs: defaultDailyHelpLogs,
+    notices: defaultNotices,
+    sosAlerts: defaultSosAlerts,
+    autoSimulateResident: false,
+    connectionStatus: isSupabaseConfigured ? 'connecting' : 'local'
+  };
+}
+
+// In-Memory & Supabase Realtime State Engine
+class AppStore {
+  private state: AppState;
+  private listeners: Set<(state: AppState) => void> = new Set();
+  private broadcast: BroadcastChannel | null = null;
+  private isLoadedFromStorage = false;
+  private isSupabaseSyncInitialized = false;
+
+  constructor() {
+    this.state = getBaselineState();
+    if (typeof window !== 'undefined') {
+      try {
+        this.broadcast = new BroadcastChannel(BROADCAST_CHANNEL);
+        this.broadcast.onmessage = (event) => {
+          if (event.data === 'SYNC') {
+            this.state = this.loadFromStorage();
+            this.notify();
+          }
+        };
+      } catch {
+        // Fallback if BroadcastChannel unavailable
+      }
+
+      window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY) {
+          this.state = this.loadFromStorage();
+          this.notify();
+        }
+      });
+    }
+  }
+
+  public getBaselineState(): AppState {
+    return getBaselineState();
+  }
+
+  private loadFromStorage(): AppState {
+    try {
+      let data = localStorage.getItem(STORAGE_KEY);
+      if (!data) {
+        data = localStorage.getItem('gateway_security_store_v2') || localStorage.getItem('gateway_security_store_v1');
+      }
+      if (data) {
+        const parsed = JSON.parse(data);
+
+        // Ensure flats array contains all 10 society portfolio flats
+        const flats = (parsed.flats && Array.isArray(parsed.flats) && parsed.flats.length >= defaultFlats.length)
+          ? parsed.flats
+          : defaultFlats;
+
+        // Ensure users have updated owned_flat_ids
+        const users = (parsed.users && Array.isArray(parsed.users) && parsed.users.length > 0)
+          ? parsed.users.map((u: UserProfile) => {
+              if (u.role === 'resident') {
+                return {
+                  ...u,
+                  owned_flat_ids: (u.owned_flat_ids && u.owned_flat_ids.length >= defaultFlats.length)
+                    ? u.owned_flat_ids
+                    : defaultUsers[1].owned_flat_ids
+                };
+              }
+              return u;
+            })
+          : defaultUsers;
+
+        const baseCurrentUser = parsed.currentUser || defaultUsers[1];
+        const currentUser = (baseCurrentUser.role === 'resident')
+          ? {
+              ...baseCurrentUser,
+              owned_flat_ids: (baseCurrentUser.owned_flat_ids && baseCurrentUser.owned_flat_ids.length >= defaultFlats.length)
+                ? baseCurrentUser.owned_flat_ids
+                : defaultUsers[1].owned_flat_ids
+            }
+          : baseCurrentUser;
+
+        const visitorRequests = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests) && parsed.visitorRequests.length > 0)
+          ? parsed.visitorRequests.map((r: VisitorRequest) => {
+              if (r.id === 'f1000000-0000-0000-0000-000000000001') {
+                return {
+                  ...r,
+                  flat_id: defaultFlats[0].id,
+                  flat_number: '1204',
+                  block_name: 'Tower A',
+                  visitor_name: 'Rahul Kumar',
+                  delivery_company: 'Amazon'
+                };
+              }
+              return r;
+            })
+          : defaultVisitorRequests;
+
+        const upgradedState: AppState = {
+          ...parsed,
+          flats,
+          users,
+          currentUser,
+          visitorRequests,
+          guestPasses: parsed.guestPasses || defaultGuestPasses,
+          auditLogs: parsed.auditLogs || defaultAuditLogs,
+          dailyHelpers: parsed.dailyHelpers || defaultDailyHelpers,
+          dailyHelpLogs: parsed.dailyHelpLogs || defaultDailyHelpLogs,
+          notices: parsed.notices || defaultNotices,
+          sosAlerts: parsed.sosAlerts || defaultSosAlerts,
+          connectionStatus: isSupabaseConfigured ? (this.state.connectionStatus || 'connecting') : 'local'
+        };
+
+        this.saveToStorage(upgradedState);
+        return upgradedState;
+      }
+    } catch {
+      // ignore
+    }
+    const initial: AppState = getBaselineState();
+    this.saveToStorage(initial);
+    return initial;
+  }
+
+  private saveToStorage(state: AppState) {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      this.broadcast?.postMessage('SYNC');
+    } catch {
+      // Storage quota or disabled
+    }
+  }
+
+  private notify() {
+    this.listeners.forEach((listener) => listener(this.state));
+  }
+
+  public subscribe(listener: (state: AppState) => void): () => void {
+    if (typeof window !== 'undefined') {
+      if (!this.isLoadedFromStorage) {
+        this.isLoadedFromStorage = true;
+        this.state = this.loadFromStorage();
+      }
+      if (!this.isSupabaseSyncInitialized && isSupabaseConfigured) {
+        this.isSupabaseSyncInitialized = true;
+        this.initSupabaseSync();
+      }
+    }
+    this.listeners.add(listener);
+    listener(this.state);
+    return () => this.listeners.delete(listener);
+  }
+
+  public getState(): AppState {
+    return this.state;
+  }
+
+  // --- SUPABASE REALTIME SYNC ---
+
+  private async initSupabaseSync() {
+    if (!isSupabaseConfigured || !supabase || typeof window === 'undefined') return;
+
+    this.state = { ...this.state, connectionStatus: 'connecting' };
+    this.notify();
+
+    try {
+      // 1. Initial Remote Fetch of Visitor Requests
+      const { data: dbRequests, error: reqError } = await supabase
+        .from('visitor_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (dbRequests && !reqError && dbRequests.length > 0) {
+        const mappedRequests: VisitorRequest[] = dbRequests.map((row) => {
+          const flat = this.state.flats.find(f => f.id === row.flat_id);
+          const gate = this.state.gates.find(g => g.id === row.gate_id);
+          const guard = this.state.users.find(u => u.id === row.guard_id);
+          const decisionMaker = this.state.users.find(u => u.id === row.decision_by);
+
+          return {
+            id: row.id,
+            community_id: row.community_id,
+            gate_id: row.gate_id,
+            gate_name: gate?.name || 'Main Gate',
+            flat_id: row.flat_id,
+            flat_number: flat?.flat_number || 'N/A',
+            block_name: flat?.block_name || 'N/A',
+            guard_id: row.guard_id,
+            guard_name: guard?.full_name || 'Gate Security',
+            guest_pass_id: row.guest_pass_id,
+            visitor_name: row.visitor_name,
+            visitor_phone: row.visitor_phone,
+            visitor_photo_path: row.visitor_photo_path,
+            category: row.category,
+            delivery_category: row.delivery_category,
+            delivery_company: row.delivery_company,
+            purpose: row.purpose,
+            vehicle_number: row.vehicle_number,
+            parcel_count: row.parcel_count,
+            parcel_details: row.parcel_details,
+            parcel_photo_path: row.parcel_photo_path,
+            gate_location: row.gate_location,
+            handover_status: row.handover_status,
+            collection_otp: row.collection_otp,
+            collected_at: row.collected_at,
+            collected_by: row.collected_by,
+            collected_by_name: row.collected_by_name,
+            handover_guard_id: row.handover_guard_id,
+            status: row.status,
+            consent_obtained: row.consent_obtained ?? true,
+            decision_by: row.decision_by,
+            decision_by_name: decisionMaker?.full_name,
+            decision_at: row.decision_at,
+            rejection_reason: row.rejection_reason,
+            check_in_time: row.check_in_time,
+            check_out_time: row.check_out_time,
+            checked_in_by: row.checked_in_by,
+            checked_out_by: row.checked_out_by,
+            supervisor_escalated: row.supervisor_escalated,
+            supervisor_notes: row.supervisor_notes,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+          };
+        });
+
+        this.state = {
+          ...this.state,
+          visitorRequests: mappedRequests
+        };
+        this.saveToStorage(this.state);
+        this.notify();
+      }
+
+      // 2. Initial Remote Fetch of Guest Passes
+      const { data: dbPasses } = await supabase
+        .from('guest_passes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (dbPasses && dbPasses.length > 0) {
+        const mappedPasses: GuestPass[] = dbPasses.map((p) => {
+          const flat = this.state.flats.find(f => f.id === p.flat_id);
+          return {
+            id: p.id,
+            community_id: p.community_id,
+            flat_id: p.flat_id,
+            flat_number: flat?.flat_number || 'N/A',
+            block_name: flat?.block_name || 'N/A',
+            created_by: p.created_by,
+            guest_name: p.guest_name,
+            guest_phone: p.guest_phone,
+            pass_code: p.pass_code,
+            category: p.category,
+            valid_from: p.valid_from,
+            valid_until: p.valid_until,
+            max_entries: p.max_entries,
+            entries_used: p.entries_used,
+            is_active: p.is_active,
+            notes: p.notes,
+            created_at: p.created_at
+          };
+        });
+
+        this.state = { ...this.state, guestPasses: mappedPasses };
+        this.saveToStorage(this.state);
+        this.notify();
+      }
+
+      // 3. Subscribe to Realtime WebSocket Channels
+      supabase
+        .channel('gateway_visitor_changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'visitor_requests' },
+          (payload) => {
+            this.handleRealtimeVisitorPayload(payload);
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'guest_passes' },
+          (payload) => {
+            this.handleRealtimePassPayload(payload);
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            this.state = { ...this.state, connectionStatus: 'connected' };
+            this.notify();
+          } else if (status === 'CHANNEL_ERROR') {
+            this.state = { ...this.state, connectionStatus: 'error' };
+            this.notify();
+          }
+        });
+    } catch (err) {
+      console.warn('Supabase sync init failed, remaining in resilient mode:', err);
+      this.state = { ...this.state, connectionStatus: 'error' };
+      this.notify();
+    }
+  }
+
+  // Handle incoming live payload from another device via Supabase
+  private handleRealtimeVisitorPayload(payload: {
+    eventType: string;
+    new: Record<string, unknown>;
+    old: Record<string, unknown>;
+  }) {
+    const { eventType } = payload;
+    const newRecord = payload.new as unknown as Record<string, string | boolean | undefined>;
+    const oldRecord = payload.old as unknown as Record<string, string | boolean | undefined>;
+
+    if (eventType === 'INSERT' && newRecord) {
+      const flat = this.state.flats.find(f => f.id === newRecord.flat_id);
+      const gate = this.state.gates.find(g => g.id === newRecord.gate_id);
+      const guard = this.state.users.find(u => u.id === newRecord.guard_id);
+
+      const incoming: VisitorRequest = {
+        id: String(newRecord.id),
+        community_id: String(newRecord.community_id || this.state.currentCommunity.id),
+        gate_id: String(newRecord.gate_id),
+        gate_name: gate?.name || 'Main Gate',
+        flat_id: String(newRecord.flat_id),
+        flat_number: flat?.flat_number || 'N/A',
+        block_name: flat?.block_name || 'N/A',
+        guard_id: String(newRecord.guard_id),
+        guard_name: guard?.full_name || 'Gate Security',
+        visitor_name: String(newRecord.visitor_name),
+        visitor_phone: String(newRecord.visitor_phone),
+        visitor_photo_path: newRecord.visitor_photo_path as string | undefined,
+        category: (newRecord.category as VisitorRequest['category']) || 'guest',
+        delivery_category: newRecord.delivery_category as VisitorRequest['delivery_category'],
+        delivery_company: newRecord.delivery_company as string | undefined,
+        purpose: String(newRecord.purpose),
+        vehicle_number: newRecord.vehicle_number as string | undefined,
+        parcel_count: newRecord.parcel_count ? Number(newRecord.parcel_count) : undefined,
+        parcel_details: newRecord.parcel_details as string | undefined,
+        parcel_photo_path: newRecord.parcel_photo_path as string | undefined,
+        gate_location: newRecord.gate_location as string | undefined,
+        handover_status: newRecord.handover_status as VisitorRequest['handover_status'],
+        collection_otp: newRecord.collection_otp as string | undefined,
+        collected_at: newRecord.collected_at as string | undefined,
+        collected_by: newRecord.collected_by as string | undefined,
+        collected_by_name: newRecord.collected_by_name as string | undefined,
+        handover_guard_id: newRecord.handover_guard_id as string | undefined,
+        status: (newRecord.status as VisitorStatus) || 'pending',
+        consent_obtained: Boolean(newRecord.consent_obtained ?? true),
+        created_at: String(newRecord.created_at || new Date().toISOString()),
+        updated_at: String(newRecord.updated_at || new Date().toISOString())
+      };
+
+      if (!this.state.visitorRequests.some(r => r.id === incoming.id)) {
+        this.state = {
+          ...this.state,
+          visitorRequests: [incoming, ...this.state.visitorRequests]
+        };
+        this.saveToStorage(this.state);
+        this.notify();
+        soundNotifier.playIncomingAlert();
+      }
+    } else if (eventType === 'UPDATE' && newRecord) {
+      const existingIndex = this.state.visitorRequests.findIndex(r => r.id === newRecord.id);
+      if (existingIndex !== -1) {
+        const oldReq = this.state.visitorRequests[existingIndex];
+        const approver = this.state.users.find(u => u.id === newRecord.decision_by);
+        const updated: VisitorRequest = {
+          ...oldReq,
+          status: (newRecord.status as VisitorStatus) || oldReq.status,
+          delivery_category: (newRecord.delivery_category as VisitorRequest['delivery_category']) ?? oldReq.delivery_category,
+          parcel_count: newRecord.parcel_count !== undefined ? Number(newRecord.parcel_count) : oldReq.parcel_count,
+          parcel_details: (newRecord.parcel_details as string) ?? oldReq.parcel_details,
+          parcel_photo_path: (newRecord.parcel_photo_path as string) ?? oldReq.parcel_photo_path,
+          gate_location: (newRecord.gate_location as string) ?? oldReq.gate_location,
+          handover_status: (newRecord.handover_status as VisitorRequest['handover_status']) ?? oldReq.handover_status,
+          collection_otp: (newRecord.collection_otp as string) ?? oldReq.collection_otp,
+          collected_at: (newRecord.collected_at as string) ?? oldReq.collected_at,
+          collected_by: (newRecord.collected_by as string) ?? oldReq.collected_by,
+          collected_by_name: (newRecord.collected_by_name as string) ?? oldReq.collected_by_name,
+          handover_guard_id: (newRecord.handover_guard_id as string) ?? oldReq.handover_guard_id,
+          decision_by: (newRecord.decision_by as string) || oldReq.decision_by,
+          decision_by_name: approver?.full_name || oldReq.decision_by_name,
+          decision_at: (newRecord.decision_at as string) || oldReq.decision_at,
+          rejection_reason: (newRecord.rejection_reason as string) || oldReq.rejection_reason,
+          check_in_time: (newRecord.check_in_time as string) || oldReq.check_in_time,
+          check_out_time: (newRecord.check_out_time as string) || oldReq.check_out_time,
+          checked_in_by: (newRecord.checked_in_by as string) || oldReq.checked_in_by,
+          checked_out_by: (newRecord.checked_out_by as string) || oldReq.checked_out_by,
+          updated_at: (newRecord.updated_at as string) || new Date().toISOString()
+        };
+
+        const newReqs = [...this.state.visitorRequests];
+        newReqs[existingIndex] = updated;
+
+        this.state = {
+          ...this.state,
+          visitorRequests: newReqs
+        };
+        this.saveToStorage(this.state);
+        this.notify();
+
+        // Audio feedback on status change
+        if (oldReq.status !== newRecord.status) {
+          if (newRecord.status === 'approved' || newRecord.status === 'checked_in' || newRecord.status === 'leave_at_gate' || newRecord.status === 'collected') {
+            soundNotifier.playApprovalChime();
+          } else if (newRecord.status === 'rejected') {
+            soundNotifier.playRejectionTone();
+          }
+        }
+      }
+    } else if (eventType === 'DELETE' && oldRecord) {
+      this.state = {
+        ...this.state,
+        visitorRequests: this.state.visitorRequests.filter(r => r.id !== oldRecord.id)
+      };
+      this.saveToStorage(this.state);
+      this.notify();
+    }
+  }
+
+  private handleRealtimePassPayload(payload: {
+    eventType: string;
+    new: Record<string, unknown>;
+  }) {
+    const { eventType } = payload;
+    const newRecord = payload.new as unknown as Record<string, string | number | boolean | undefined>;
+
+    if (eventType === 'INSERT' && newRecord) {
+      if (!this.state.guestPasses.some(p => p.id === newRecord.id)) {
+        const flat = this.state.flats.find(f => f.id === newRecord.flat_id);
+        const incomingPass: GuestPass = {
+          id: String(newRecord.id),
+          community_id: String(newRecord.community_id || this.state.currentCommunity.id),
+          flat_id: String(newRecord.flat_id),
+          flat_number: flat?.flat_number || 'N/A',
+          block_name: flat?.block_name || 'N/A',
+          created_by: String(newRecord.created_by),
+          guest_name: String(newRecord.guest_name),
+          guest_phone: String(newRecord.guest_phone || 'N/A'),
+          pass_code: String(newRecord.pass_code),
+          category: (newRecord.category as GuestPass['category']) || 'guest',
+          valid_from: String(newRecord.valid_from),
+          valid_until: String(newRecord.valid_until),
+          max_entries: Number(newRecord.max_entries || 1),
+          entries_used: Number(newRecord.entries_used || 0),
+          is_active: Boolean(newRecord.is_active ?? true),
+          notes: newRecord.notes as string | undefined,
+          created_at: String(newRecord.created_at || new Date().toISOString())
+        };
+
+        this.state = {
+          ...this.state,
+          guestPasses: [incomingPass, ...this.state.guestPasses]
+        };
+        this.saveToStorage(this.state);
+        this.notify();
+      }
+    } else if (eventType === 'UPDATE' && newRecord) {
+      this.state = {
+        ...this.state,
+        guestPasses: this.state.guestPasses.map(p => p.id === newRecord.id ? {
+          ...p,
+          entries_used: Number(newRecord.entries_used ?? p.entries_used),
+          is_active: Boolean(newRecord.is_active ?? p.is_active)
+        } : p)
+      };
+      this.saveToStorage(this.state);
+      this.notify();
+    }
+  }
+
+  // --- ACTIONS ---
+
+  public switchActiveUser(identifier: string) {
+    const found = this.state.users.find(u => u.id === identifier || u.role === identifier);
+    if (found) {
+      this.state = { ...this.state, currentUser: found };
+      this.saveToStorage(this.state);
+      this.notify();
+    }
+  }
+
+  public switchActiveFlat(flatId: string) {
+    const flat = this.state.flats.find(f => f.id === flatId);
+    if (!flat) return;
+    const updatedUser = {
+      ...this.state.currentUser,
+      flat_id: flat.id,
+      flat_display: `${flat.block_name || 'Tower A'} • Floor ${flat.floor_number} • Flat ${flat.flat_number}`
+    };
+    this.state = {
+      ...this.state,
+      currentUser: updatedUser,
+      users: this.state.users.map(u => u.id === updatedUser.id ? updatedUser : u)
+    };
+    this.saveToStorage(this.state);
+    this.notify();
+  }
+
+  public registerNewFlat(params: {
+    block_name: string;
+    flat_number: string;
+    floor_number?: number;
+    occupancy_type: 'self_occupied' | 'rented' | 'vacant';
+    tenant_name?: string;
+    tenant_phone?: string;
+    monthly_rent?: number;
+    lease_end_date?: string;
+  }): Flat {
+    const block = this.state.blocks.find(b => b.name === params.block_name) || this.state.blocks[0];
+    const newFlatId = generateUUID();
+    const floor = params.floor_number || parseInt(params.flat_number.slice(0, -2)) || 1;
+
+    const newFlat: Flat = {
+      id: newFlatId,
+      community_id: this.state.currentCommunity.id,
+      block_id: block.id,
+      block_name: params.block_name,
+      flat_number: params.flat_number,
+      floor_number: floor,
+      intercom_number: `${params.block_name.slice(-1)}${params.flat_number}`,
+      is_occupied: params.occupancy_type !== 'vacant',
+      occupancy_type: params.occupancy_type,
+      owner_name: this.state.currentUser.full_name || 'Aarav Sharma',
+      tenant_name: params.tenant_name,
+      tenant_phone: params.tenant_phone,
+      monthly_rent: params.monthly_rent,
+      lease_end_date: params.lease_end_date,
+      maintenance_amount: 4200,
+      maintenance_status: 'paid'
+    };
+
+    const updatedOwnedFlatIds = [
+      ...(this.state.currentUser.owned_flat_ids || []),
+      newFlatId
+    ];
+
+    const updatedUser = {
+      ...this.state.currentUser,
+      owned_flat_ids: updatedOwnedFlatIds
+    };
+
+    this.state = {
+      ...this.state,
+      flats: [newFlat, ...this.state.flats],
+      currentUser: updatedUser,
+      users: this.state.users.map(u => u.id === updatedUser.id ? updatedUser : u)
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    return newFlat;
+  }
+
+  public purgeExpiredVisitorLogs(days: number = 90) {
+    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const beforeCount = this.state.visitorRequests.length;
+    const kept = this.state.visitorRequests.filter(r => new Date(r.created_at) >= cutoffDate);
+    const purgedCount = beforeCount - kept.length;
+    this.state = {
+      ...this.state,
+      visitorRequests: kept
+    };
+    this.saveToStorage(this.state);
+    this.notify();
+    return { purgedCount, retainedCount: kept.length, retentionDays: days };
+  }
+
+  public toggleAutoSimulateResident(enabled: boolean) {
+    this.state = { ...this.state, autoSimulateResident: enabled };
+    this.saveToStorage(this.state);
+    this.notify();
+  }
+
+  public resetDemoData() {
+    const initial: AppState = getBaselineState();
+    this.state = initial;
+    this.saveToStorage(initial);
+    this.notify();
+  }
+
+  // Guard registers a visitor
+  public createVisitorRequest(params: {
+    gate_id: string;
+    flat_id: string;
+    visitor_name: string;
+    visitor_phone: string;
+    visitor_photo_path?: string;
+    category: VisitorRequest['category'];
+    delivery_category?: VisitorRequest['delivery_category'];
+    delivery_company?: string;
+    purpose: string;
+    vehicle_number?: string;
+    consent_obtained: boolean;
+    parcel_count?: number;
+    parcel_details?: string;
+    parcel_photo_path?: string;
+    gate_location?: string;
+  }): VisitorRequest {
+    const flat = this.state.flats.find(f => f.id === params.flat_id);
+    const gate = this.state.gates.find(g => g.id === params.gate_id);
+
+    const newRequest: VisitorRequest = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      gate_id: params.gate_id,
+      gate_name: gate?.name || 'Main Gate',
+      flat_id: params.flat_id,
+      flat_number: flat?.flat_number || 'N/A',
+      block_name: flat?.block_name || 'N/A',
+      guard_id: this.state.currentUser.id,
+      guard_name: this.state.currentUser.full_name,
+      visitor_name: params.visitor_name,
+      visitor_phone: params.visitor_phone,
+      visitor_photo_path: params.visitor_photo_path || '',
+      category: params.category,
+      delivery_category: params.delivery_category,
+      delivery_company: params.delivery_company,
+      purpose: params.purpose,
+      vehicle_number: params.vehicle_number,
+      parcel_count: params.parcel_count || (params.category === 'delivery' ? 1 : undefined),
+      parcel_details: params.parcel_details,
+      parcel_photo_path: params.parcel_photo_path,
+      gate_location: params.gate_location || gate?.name || 'Main Gate',
+      status: 'pending',
+      consent_obtained: params.consent_obtained,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'REGISTER_VISITOR',
+      entity_type: 'visitor_requests',
+      entity_id: newRequest.id,
+      metadata: { 
+        visitor: newRequest.visitor_name, 
+        flat: newRequest.flat_number, 
+        category: newRequest.category,
+        delivery_category: newRequest.delivery_category,
+        parcel_details: newRequest.parcel_details
+      },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: [newRequest, ...this.state.visitorRequests],
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playIncomingAlert();
+
+    // Async push to Supabase Cloud Database with automatic dependency upserting & schema fallback
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      const corePayload: Record<string, unknown> = {
+        id: newRequest.id,
+        community_id: newRequest.community_id,
+        gate_id: newRequest.gate_id,
+        flat_id: newRequest.flat_id,
+        guard_id: newRequest.guard_id,
+        visitor_name: newRequest.visitor_name,
+        visitor_phone: newRequest.visitor_phone,
+        visitor_photo_path: newRequest.visitor_photo_path,
+        category: newRequest.category,
+        delivery_company: newRequest.delivery_company,
+        purpose: newRequest.delivery_category 
+          ? `[${newRequest.delivery_category.toUpperCase()}] ${newRequest.purpose}` 
+          : newRequest.purpose,
+        vehicle_number: newRequest.vehicle_number,
+        status: newRequest.status,
+        consent_obtained: newRequest.consent_obtained,
+        created_at: newRequest.created_at,
+        updated_at: newRequest.updated_at
+      };
+
+      const fullPayload: Record<string, unknown> = {
+        ...corePayload,
+        delivery_category: newRequest.delivery_category,
+        parcel_count: newRequest.parcel_count,
+        parcel_details: newRequest.parcel_details,
+        parcel_photo_path: newRequest.parcel_photo_path,
+        gate_location: newRequest.gate_location
+      };
+
+      (async () => {
+        try {
+          // 1. Ensure the flat exists in the remote database so foreign key doesn't fail
+          if (flat) {
+            await client.from('flats').upsert({
+              id: flat.id,
+              community_id: flat.community_id,
+              block_id: flat.block_id,
+              flat_number: flat.flat_number,
+              floor_number: flat.floor_number || 12,
+              intercom_number: flat.intercom_number || flat.flat_number
+            }, { onConflict: 'id' }).select();
+          }
+
+          // 2. Ensure guard exists in user_profiles
+          const guardUser = this.state.currentUser;
+          if (guardUser) {
+            await client.from('user_profiles').upsert({
+              id: guardUser.id,
+              community_id: this.state.currentCommunity.id,
+              full_name: guardUser.full_name,
+              email: guardUser.email,
+              phone: guardUser.phone,
+              role: guardUser.role
+            }, { onConflict: 'id' }).select();
+          }
+
+          // 3. Ensure gate exists in gates
+          if (gate) {
+            await client.from('gates').upsert({
+              id: gate.id,
+              community_id: gate.community_id,
+              name: gate.name,
+              gate_type: gate.gate_type,
+              is_active: gate.is_active
+            }, { onConflict: 'id' }).select();
+          }
+
+          // 4. Try insert with fullPayload; if remote DB lacks migration 07 columns (PGRST204), fallback to corePayload
+          const { error } = await client.from('visitor_requests').insert(fullPayload);
+          if (error) {
+            if (error.code === 'PGRST204' || error.message?.includes('delivery_category') || error.message?.includes('schema cache')) {
+              console.warn('Remote Supabase schema missing migration 07 columns, syncing via core schema...');
+              const retryRes = await client.from('visitor_requests').insert(corePayload);
+              if (retryRes.error) {
+                console.warn('Supabase visitor request sync notice (core fallback):', retryRes.error.message || retryRes.error.code);
+              } else {
+                console.log('✅ Supabase visitor request successfully synced to cloud database!');
+              }
+            } else {
+              console.warn('Supabase visitor request insert notice:', error.message || error.code);
+            }
+          } else {
+            console.log('✅ Supabase visitor request successfully synced with full schema!');
+          }
+        } catch (err) {
+          console.warn('Supabase visitor request sync bypassed, stored locally:', (err as Error).message);
+        }
+      })();
+    }
+
+    // Auto simulate approval if enabled
+    if (this.state.autoSimulateResident) {
+      setTimeout(() => {
+        this.approveVisitorRequest(newRequest.id, defaultUsers[1].id);
+      }, 4500);
+    }
+
+    return newRequest;
+  }
+
+  // Resident Approves
+  public approveVisitorRequest(requestId: string, residentId: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    if (!isValidStatusTransition(req.status, 'approved')) {
+      throw new Error(`Cannot transition visitor status from ${req.status} to approved`);
+    }
+
+    const approver = this.state.users.find(u => u.id === residentId) || this.state.currentUser;
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'approved',
+      decision_by: approver.id,
+      decision_by_name: approver.full_name,
+      decision_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: approver.id,
+      actor_name: approver.full_name,
+      actor_role: approver.role,
+      action: 'APPROVE_VISITOR',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, flat: req.flat_number },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playApprovalChime();
+
+    // Async push to Supabase Cloud Database
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        status: 'approved',
+        decision_by: approver.id,
+        decision_at: updated.decision_at,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase approve error:', error);
+      });
+    }
+
+    return true;
+  }
+
+  // Resident Rejects
+  public rejectVisitorRequest(requestId: string, residentId: string, reason: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    if (!isValidStatusTransition(req.status, 'rejected')) {
+      throw new Error(`Cannot transition visitor status from ${req.status} to rejected`);
+    }
+
+    const rejector = this.state.users.find(u => u.id === residentId) || this.state.currentUser;
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'rejected',
+      decision_by: rejector.id,
+      decision_by_name: rejector.full_name,
+      decision_at: new Date().toISOString(),
+      rejection_reason: reason || 'Declined by resident',
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: rejector.id,
+      actor_name: rejector.full_name,
+      actor_role: rejector.role,
+      action: 'REJECT_VISITOR',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, flat: req.flat_number, reason },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playRejectionTone();
+
+    // Async push to Supabase Cloud Database
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        status: 'rejected',
+        decision_by: rejector.id,
+        decision_at: updated.decision_at,
+        rejection_reason: updated.rejection_reason,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase reject error:', error);
+      });
+    }
+
+    return true;
+  }
+
+  // Resident Authorizes Leave at Gate
+  public authorizeLeaveAtGate(requestId: string, residentId: string, notes?: string): { success: boolean; otp: string } {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) throw new Error('Visitor request not found');
+
+    if (!isValidStatusTransition(req.status, 'leave_at_gate')) {
+      throw new Error(`Cannot authorize Leave at Gate: request status is currently "${req.status}"`);
+    }
+
+    const approver = this.state.users.find(u => u.id === residentId) || this.state.currentUser;
+    // Generate secure 4-digit collection OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'leave_at_gate',
+      handover_status: 'at_gate',
+      collection_otp: otp,
+      decision_by: approver.id,
+      decision_by_name: approver.full_name,
+      decision_at: new Date().toISOString(),
+      parcel_details: notes ? (req.parcel_details ? `${req.parcel_details} | Resident Note: ${notes}` : `Resident Note: ${notes}`) : req.parcel_details,
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: approver.id,
+      actor_name: approver.full_name,
+      actor_role: approver.role,
+      action: 'AUTHORIZE_LEAVE_AT_GATE',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { 
+        visitor: req.visitor_name, 
+        flat: req.flat_number, 
+        otp, 
+        courier: req.delivery_company,
+        delivery_category: req.delivery_category
+      },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playApprovalChime();
+
+    // Async push to Supabase Cloud Database with schema fallback
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      client.from('visitor_requests').update({
+        status: 'leave_at_gate',
+        handover_status: 'at_gate',
+        collection_otp: otp,
+        decision_by: approver.id,
+        decision_at: updated.decision_at,
+        parcel_details: updated.parcel_details,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(async ({ error }) => {
+        if (error) {
+          // If remote schema lacks leave_at_gate enum or columns, fallback to status approved with note
+          console.warn('Supabase leave_at_gate update failed, retrying with core schema...');
+          await client.from('visitor_requests').update({
+            status: 'approved',
+            decision_by: approver.id,
+            decision_at: updated.decision_at,
+            purpose: `[LEAVE AT GATE - OTP: ${otp}] ${req.purpose}`,
+            updated_at: updated.updated_at
+          }).eq('id', requestId);
+        }
+      });
+    }
+
+    return { success: true, otp };
+  }
+
+  // Guard Confirms Parcel Handover to Resident (Collection)
+  public confirmParcelHandover(
+    requestId: string,
+    guardId?: string,
+    enteredOtp?: string,
+    collectorName?: string
+  ): { success: boolean; message: string } {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) throw new Error('Parcel record not found');
+
+    if (!isValidStatusTransition(req.status, 'collected')) {
+      throw new Error(`Cannot collect parcel: current status is "${req.status}". Only parcels awaiting collection can be marked collected.`);
+    }
+
+    // OTP validation if collection_otp is set
+    if (req.collection_otp) {
+      if (!enteredOtp || enteredOtp.trim() === '') {
+        throw new Error('Collection OTP is required to verify parcel handover.');
+      }
+      if (enteredOtp.trim().toUpperCase() !== req.collection_otp.trim().toUpperCase()) {
+        throw new Error('Invalid collection OTP. Verification failed.');
+      }
+    }
+
+    const guard = this.state.users.find(u => u.id === guardId) || this.state.currentUser;
+    const finalCollectorName = (collectorName && collectorName.trim()) || 'Resident';
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'collected',
+      handover_status: 'collected',
+      collected_at: new Date().toISOString(),
+      collected_by_name: finalCollectorName,
+      handover_guard_id: guard.id,
+      handover_guard_name: guard.full_name,
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: guard.id,
+      actor_name: guard.full_name,
+      actor_role: guard.role,
+      action: 'COLLECT_PARCEL',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { 
+        visitor: req.visitor_name, 
+        flat: req.flat_number, 
+        collector: finalCollectorName, 
+        guard: guard.full_name,
+        courier: req.delivery_company
+      },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playApprovalChime();
+
+    // Async push to Supabase Cloud Database: Try RPC fn_confirm_parcel_handover first, fallback to table update
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      client.rpc('fn_confirm_parcel_handover', {
+        p_request_id: requestId,
+        p_collection_otp: enteredOtp || null,
+        p_collector_name: finalCollectorName
+      }).then(({ error }) => {
+        if (error) {
+          console.warn('RPC fn_confirm_parcel_handover fallback to direct update:', error.message);
+          client.from('visitor_requests').update({
+            status: 'collected',
+            handover_status: 'collected',
+            collected_at: updated.collected_at,
+            collected_by_name: finalCollectorName,
+            handover_guard_id: guard.id,
+            updated_at: updated.updated_at
+          }).eq('id', requestId);
+        }
+      });
+    }
+
+    return { success: true, message: `Parcel handover successfully recorded for ${finalCollectorName}.` };
+  }
+
+  // Guard Checks-In Approved Visitor
+  public checkInVisitor(requestId: string, guardId?: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    if (!isValidStatusTransition(req.status, 'checked_in')) {
+      throw new Error(`Entry denied: Status is currently "${req.status}". Only approved requests permit check-in.`);
+    }
+
+    const guard = this.state.users.find(u => u.id === guardId) || this.state.currentUser;
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'checked_in',
+      check_in_time: new Date().toISOString(),
+      checked_in_by: guard.id,
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: guard.id,
+      actor_name: guard.full_name,
+      actor_role: guard.role,
+      action: 'CHECK_IN',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, flat: req.flat_number },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playApprovalChime();
+
+    // Async push to Supabase Cloud Database
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        status: 'checked_in',
+        check_in_time: updated.check_in_time,
+        checked_in_by: guard.id,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase check-in error:', error);
+      });
+    }
+
+    return true;
+  }
+
+  // Guard Checks-Out Departing Visitor
+  public checkOutVisitor(requestId: string, guardId?: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    if (!isValidStatusTransition(req.status, 'checked_out')) {
+      throw new Error(`Cannot checkout visitor: status is currently "${req.status}". Only checked_in visitors can be checked out.`);
+    }
+
+    const guard = this.state.users.find(u => u.id === guardId) || this.state.currentUser;
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'checked_out',
+      check_out_time: new Date().toISOString(),
+      checked_out_by: guard.id,
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: guard.id,
+      actor_name: guard.full_name,
+      actor_role: guard.role,
+      action: 'CHECK_OUT',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, flat: req.flat_number },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    // Async push to Supabase Cloud Database
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        status: 'checked_out',
+        check_out_time: updated.check_out_time,
+        checked_out_by: guard.id,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase check-out error:', error);
+      });
+    }
+
+    return true;
+  }
+
+  // Cancel Visitor Request (by Guard or Resident)
+  public cancelVisitorRequest(requestId: string, reason?: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    const updated: VisitorRequest = {
+      ...req,
+      status: 'cancelled',
+      rejection_reason: reason || 'Request cancelled at gate',
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'CANCEL_VISITOR',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, reason },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        status: 'cancelled',
+        rejection_reason: updated.rejection_reason,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase cancel error:', error);
+      });
+    }
+
+    return true;
+  }
+
+  // Guard escalates pending request to supervisor / intercom call
+  public escalateToSupervisor(requestId: string, notes?: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    const updated: VisitorRequest = {
+      ...req,
+      supervisor_escalated: true,
+      supervisor_notes: notes || 'Resident not answering; escalated to security supervisor',
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'ESCALATE_VISITOR',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, notes },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        supervisor_escalated: true,
+        supervisor_notes: updated.supervisor_notes,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase escalate error:', error);
+      });
+    }
+
+    return true;
+  }
+
+  // Resident Creates Pre-approved Guest Pass
+  public createGuestPass(params: {
+    flat_id?: string;
+    guest_name: string;
+    guest_phone?: string;
+    category: GuestPass['category'];
+    valid_hours: number;
+    notes?: string;
+  }): GuestPass {
+    const userFlat = params.flat_id 
+      ? (this.state.flats.find(f => f.id === params.flat_id) || this.state.flats[0])
+      : (this.state.flats.find(f => f.id === this.state.currentUser.flat_id) || this.state.flats[0]);
+    const passCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit PIN
+
+    const newPass: GuestPass = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      flat_id: userFlat.id,
+      flat_number: userFlat.flat_number,
+      block_name: userFlat.block_name,
+      created_by: this.state.currentUser.id,
+      guest_name: params.guest_name,
+      guest_phone: params.guest_phone || 'N/A',
+      pass_code: passCode,
+      category: params.category,
+      valid_from: new Date().toISOString(),
+      valid_until: new Date(Date.now() + params.valid_hours * 3600000).toISOString(),
+      max_entries: 1,
+      entries_used: 0,
+      is_active: true,
+      notes: params.notes,
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      guestPasses: [newPass, ...this.state.guestPasses]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    // Async push to Supabase Cloud Database with automatic foreign key resolution
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      (async () => {
+        try {
+          // 1. Ensure the flat exists in the remote database so foreign key doesn't fail
+          if (userFlat) {
+            await client.from('flats').upsert({
+              id: userFlat.id,
+              community_id: userFlat.community_id,
+              block_id: userFlat.block_id,
+              flat_number: userFlat.flat_number,
+              floor_number: userFlat.floor_number || 12,
+              intercom_number: userFlat.intercom_number || userFlat.flat_number
+            }, { onConflict: 'id' }).select();
+          }
+
+          // 2. Ensure created_by user exists in user_profiles
+          const creator = this.state.currentUser;
+          if (creator) {
+            await client.from('user_profiles').upsert({
+              id: creator.id,
+              community_id: this.state.currentCommunity.id,
+              full_name: creator.full_name,
+              email: creator.email,
+              phone: creator.phone,
+              role: creator.role
+            }, { onConflict: 'id' }).select();
+          }
+
+          // 3. Insert the guest pass
+          const { error } = await client.from('guest_passes').insert({
+            id: newPass.id,
+            community_id: newPass.community_id,
+            flat_id: newPass.flat_id,
+            created_by: newPass.created_by,
+            guest_name: newPass.guest_name,
+            guest_phone: newPass.guest_phone,
+            pass_code: newPass.pass_code,
+            category: newPass.category,
+            valid_from: newPass.valid_from,
+            valid_until: newPass.valid_until,
+            max_entries: newPass.max_entries,
+            entries_used: newPass.entries_used,
+            is_active: newPass.is_active,
+            notes: newPass.notes,
+            created_at: newPass.created_at
+          });
+
+          if (error) {
+            console.warn('Supabase guest pass insert notice:', error.message || error.code || JSON.stringify(error));
+          } else {
+            console.log('✅ Guest pass synchronized with Supabase Cloud Database!');
+          }
+        } catch (err) {
+          console.warn('Supabase guest pass sync bypassed, stored locally:', (err as Error).message);
+        }
+      })();
+    }
+
+    return newPass;
+  }
+
+  // Guard verifies and checks in with pre-approved guest pass
+  public checkInWithGuestPass(passCode: string, gateId: string): { success: boolean; message: string; request?: VisitorRequest } {
+    const cleanCode = passCode.trim();
+    const pass = this.state.guestPasses.find(p => p.pass_code === cleanCode && p.is_active);
+
+    if (!pass) {
+      return { success: false, message: 'Invalid or inactive pass code.' };
+    }
+
+    const now = new Date();
+    if (new Date(pass.valid_until) < now) {
+      return { success: false, message: 'This guest pass has expired.' };
+    }
+
+    if (pass.entries_used >= pass.max_entries) {
+      return { success: false, message: 'Pass maximum entries limit reached.' };
+    }
+
+    const gate = this.state.gates.find(g => g.id === gateId) || this.state.gates[0];
+
+    // Create an automatically approved & checked-in visitor request
+    const newRequest: VisitorRequest = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      gate_id: gate.id,
+      gate_name: gate.name,
+      flat_id: pass.flat_id,
+      flat_number: pass.flat_number,
+      block_name: pass.block_name,
+      guard_id: this.state.currentUser.id,
+      guard_name: this.state.currentUser.full_name,
+      guest_pass_id: pass.id,
+      visitor_name: pass.guest_name,
+      visitor_phone: pass.guest_phone || 'N/A',
+      category: pass.category,
+      purpose: pass.notes || 'Pre-approved guest pass entry',
+      status: 'checked_in',
+      consent_obtained: true,
+      decision_by: pass.created_by,
+      decision_by_name: 'Pre-Approved by Resident',
+      decision_at: pass.created_at,
+      check_in_time: new Date().toISOString(),
+      checked_in_by: this.state.currentUser.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Increment entries used on pass
+    const updatedPass: GuestPass = {
+      ...pass,
+      entries_used: pass.entries_used + 1,
+      is_active: pass.entries_used + 1 < pass.max_entries
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: [newRequest, ...this.state.visitorRequests],
+      guestPasses: this.state.guestPasses.map(p => p.id === pass.id ? updatedPass : p)
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playApprovalChime();
+
+    // Async push to Supabase Cloud Database
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').insert({
+        id: newRequest.id,
+        community_id: newRequest.community_id,
+        gate_id: newRequest.gate_id,
+        flat_id: newRequest.flat_id,
+        guard_id: newRequest.guard_id,
+        guest_pass_id: newRequest.guest_pass_id,
+        visitor_name: newRequest.visitor_name,
+        visitor_phone: newRequest.visitor_phone,
+        category: newRequest.category,
+        purpose: newRequest.purpose,
+        status: newRequest.status,
+        consent_obtained: true,
+        decision_by: newRequest.decision_by,
+        decision_at: newRequest.decision_at,
+        check_in_time: newRequest.check_in_time,
+        checked_in_by: newRequest.checked_in_by,
+        created_at: newRequest.created_at,
+        updated_at: newRequest.updated_at
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase pass visitor check-in notice:', error.message || error.code || JSON.stringify(error));
+      });
+
+      supabase.from('guest_passes').update({
+        entries_used: updatedPass.entries_used,
+        is_active: updatedPass.is_active
+      }).eq('id', pass.id).then(({ error }) => {
+        if (error) console.warn('Supabase pass update notice:', error.message || error.code || JSON.stringify(error));
+      });
+    }
+
+    return { success: true, message: `Pass verified! Entry confirmed for ${pass.guest_name}.`, request: newRequest };
+  }
+
+  // CSV Export for Community Admin
+  public exportVisitorsCSV(): string {
+    const headers = [
+      'Request ID',
+      'Visitor Name',
+      'Phone',
+      'Category',
+      'Flat',
+      'Gate',
+      'Purpose',
+      'Vehicle Number',
+      'Status',
+      'Requested At',
+      'Decision Time',
+      'Approved/Rejected By',
+      'Check In Time',
+      'Check Out Time'
+    ];
+
+    const rows = this.state.visitorRequests.map(r => [
+      r.id,
+      `"${r.visitor_name.replace(/"/g, '""')}"`,
+      r.visitor_phone,
+      r.category,
+      `"${(r.block_name || '')} - ${(r.flat_number || '')}"`,
+      `"${(r.gate_name || '').replace(/"/g, '""')}"`,
+      `"${(r.purpose || '').replace(/"/g, '""')}"`,
+      r.vehicle_number || 'N/A',
+      r.status,
+      r.created_at,
+      r.decision_at || '',
+      `"${(r.decision_by_name || '').replace(/"/g, '""')}"`,
+      r.check_in_time || '',
+      r.check_out_time || ''
+    ]);
+
+    return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+  }
+
+  // -------------------------------------------------------------
+  // DAILY HELP & DOMESTIC STAFF ACTIONS
+  // -------------------------------------------------------------
+
+  public toggleDailyHelperCheckIn(helperId: string, gateId?: string): { success: boolean; message: string; is_inside: boolean } {
+    const helperIndex = this.state.dailyHelpers.findIndex(h => h.id === helperId);
+    if (helperIndex === -1) {
+      return { success: false, message: 'Daily helper not found', is_inside: false };
+    }
+
+    const helper = this.state.dailyHelpers[helperIndex];
+    const willBeInside = !helper.is_inside;
+    const nowIso = new Date().toISOString();
+    const gate = this.state.gates.find(g => g.id === gateId) || this.state.gates[0];
+
+    const updatedHelper: DailyHelper = {
+      ...helper,
+      is_inside: willBeInside,
+      current_check_in_time: willBeInside ? nowIso : undefined
+    };
+
+    const newDailyHelpers = [...this.state.dailyHelpers];
+    newDailyHelpers[helperIndex] = updatedHelper;
+
+    let newLogs = [...this.state.dailyHelpLogs];
+
+    if (willBeInside) {
+      // Check in log
+      const newLog: DailyHelpLog = {
+        id: generateUUID(),
+        helper_id: helper.id,
+        helper_name: helper.name,
+        category: helper.category,
+        community_id: this.state.currentCommunity.id,
+        gate_id: gate?.id || defaultGates[0].id,
+        gate_name: gate?.name || 'Main Gate',
+        check_in_time: nowIso,
+        guard_id: this.state.currentUser.id,
+        guard_name: this.state.currentUser.full_name
+      };
+      newLogs = [newLog, ...newLogs];
+      soundNotifier.playCheckInChime();
+    } else {
+      // Check out: close current active log
+      newLogs = newLogs.map(l => {
+        if (l.helper_id === helper.id && !l.check_out_time) {
+          return { ...l, check_out_time: nowIso };
+        }
+        return l;
+      });
+      soundNotifier.playBell();
+    }
+
+    // Add Audit Log
+    const audit: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: willBeInside ? 'DAILY_HELP_CHECK_IN' : 'DAILY_HELP_CHECK_OUT',
+      entity_type: 'daily_helpers',
+      entity_id: helper.id,
+      metadata: { helper_name: helper.name, category: helper.category, gate: gate?.name },
+      created_at: nowIso
+    };
+
+    this.state = {
+      ...this.state,
+      dailyHelpers: newDailyHelpers,
+      dailyHelpLogs: newLogs,
+      auditLogs: [audit, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    return {
+      success: true,
+      message: willBeInside 
+        ? `${helper.name} (${helper.category.toUpperCase()}) Checked-In at ${gate?.name || 'Gate'}`
+        : `${helper.name} Checked-Out successfully`,
+      is_inside: willBeInside
+    };
+  }
+
+  public addDailyHelper(data: Omit<DailyHelper, 'id' | 'created_at'>): DailyHelper {
+    const newHelper: DailyHelper = {
+      ...data,
+      id: generateUUID(),
+      is_inside: false,
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      dailyHelpers: [newHelper, ...this.state.dailyHelpers]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    return newHelper;
+  }
+
+  // -------------------------------------------------------------
+  // NOTICES & ANNOUNCEMENTS ACTIONS
+  // -------------------------------------------------------------
+
+  public addNotice(data: Omit<Notice, 'id' | 'created_at'>): Notice {
+    const newNotice: Notice = {
+      ...data,
+      id: generateUUID(),
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      notices: [newNotice, ...this.state.notices]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playNotificationChime();
+    return newNotice;
+  }
+
+  public deleteNotice(noticeId: string): void {
+    this.state = {
+      ...this.state,
+      notices: this.state.notices.filter(n => n.id !== noticeId)
+    };
+    this.saveToStorage(this.state);
+    this.notify();
+  }
+
+  // -------------------------------------------------------------
+  // EMERGENCY SOS ACTIONS
+  // -------------------------------------------------------------
+
+  public triggerSosAlert(alertType: SosType = 'security', notes?: string): SosAlert {
+    const flat = this.state.flats.find(f => f.id === this.state.currentUser.flat_id) || this.state.flats[0];
+
+    const newAlert: SosAlert = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      flat_id: flat.id,
+      flat_number: flat.flat_number,
+      block_name: flat.block_name || 'Tower B',
+      resident_name: this.state.currentUser.full_name,
+      resident_phone: this.state.currentUser.phone,
+      alert_type: alertType,
+      status: 'active',
+      notes: notes || 'Resident triggered emergency alarm button',
+      created_at: new Date().toISOString()
+    };
+
+    const audit: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'SOS_TRIGGERED',
+      entity_type: 'sos_alerts',
+      entity_id: newAlert.id,
+      metadata: { flat: `${newAlert.block_name} - ${newAlert.flat_number}`, type: alertType },
+      created_at: newAlert.created_at
+    };
+
+    this.state = {
+      ...this.state,
+      sosAlerts: [newAlert, ...this.state.sosAlerts],
+      auditLogs: [audit, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    soundNotifier.playEmergencyAlarm();
+
+    return newAlert;
+  }
+
+  public resolveSosAlert(alertId: string, status: SosStatus = 'resolved'): void {
+    const nowIso = new Date().toISOString();
+    this.state = {
+      ...this.state,
+      sosAlerts: this.state.sosAlerts.map(a => 
+        a.id === alertId ? { ...a, status, resolved_by: this.state.currentUser.full_name, resolved_at: nowIso } : a
+      )
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+  }
+
+  // -------------------------------------------------------------
+  // FLAT & UNIT MANAGEMENT ACTIONS
+  // -------------------------------------------------------------
+
+  public addFlat(flat: Omit<Flat, 'id'>): Flat {
+    const newFlat: Flat = {
+      ...flat,
+      id: generateUUID()
+    };
+
+    this.state = {
+      ...this.state,
+      flats: [...this.state.flats, newFlat]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    return newFlat;
+  }
+
+  // Update Community Settings
+  public updateCommunitySettings(params: {
+    emergency_police?: string;
+    emergency_ambulance?: string;
+    emergency_fire?: string;
+    estate_manager_phone?: string;
+    visitor_retention_days?: number;
+  }) {
+    this.state = {
+      ...this.state,
+      currentCommunity: {
+        ...this.state.currentCommunity,
+        ...params
+      }
+    };
+    this.saveToStorage(this.state);
+    this.notify();
+  }
+}
+
+// Singleton instance
+export const appStore = new AppStore();
