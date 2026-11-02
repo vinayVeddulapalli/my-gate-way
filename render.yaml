@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: gateway-security
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_APP_NAME
+        value: Gateway Security
+      - key: NEXT_PUBLIC_DEFAULT_COMMUNITY_ID
+        value: a0000000-0000-0000-0000-000000000001
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
