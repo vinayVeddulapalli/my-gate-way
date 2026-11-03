@@ -1,11 +1,11 @@
 -- ============================================================================
 -- GATEWAY SECURITY: CREATE REAL CREDENTIALS IN SUPABASE AUTH
--- Migration 09: Dedicated Logins for Guard, Owner, Admin, and Super Admin
+-- Migration 09 (Fixed): Dedicated Logins for Guard, Owner, Admin, and Super Admin
 -- ============================================================================
 -- HOW TO RUN:
--- 1. Open your Supabase Dashboard: https://supabase.com/dashboard/project/lxiqquskupxdteasmfrw
+-- 1. Open Supabase Dashboard: https://supabase.com/dashboard/project/lxiqquskupxdteasmfrw
 -- 2. Go to "SQL Editor" -> Click "New query"
--- 3. Paste this ENTIRE file into the editor and click "RUN"
+-- 3. Paste this ENTIRE script and click "RUN"
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -17,13 +17,21 @@ CREATE OR REPLACE FUNCTION create_gateway_auth_user(
     p_password TEXT,
     p_full_name TEXT,
     p_phone TEXT,
-    p_role user_role,
+    p_role TEXT,
     p_community_id UUID DEFAULT 'a0000000-0000-0000-0000-000000000001'
 ) RETURNS VOID AS $$
 DECLARE
     v_encrypted_pw TEXT;
+    v_role_enum user_role;
 BEGIN
     v_encrypted_pw := crypt(p_password, gen_salt('bf'));
+    v_role_enum := p_role::user_role;
+
+    -- Clean up any prior conflicting signup with the same email but different UUID
+    DELETE FROM auth.identities WHERE user_id IN (
+        SELECT id FROM auth.users WHERE lower(email) = lower(p_email) AND id <> p_user_id
+    );
+    DELETE FROM auth.users WHERE lower(email) = lower(p_email) AND id <> p_user_id;
 
     -- 1. Insert or update in auth.users
     INSERT INTO auth.users (
@@ -45,7 +53,7 @@ BEGIN
         p_user_id,
         'authenticated',
         'authenticated',
-        p_email,
+        lower(p_email),
         v_encrypted_pw,
         now(),
         now(),
@@ -56,36 +64,40 @@ BEGIN
         now()
     )
     ON CONFLICT (id) DO UPDATE SET
-        email = EXCLUDED.email,
+        email = lower(EXCLUDED.email),
         encrypted_password = EXCLUDED.encrypted_password,
         email_confirmed_at = now(),
         raw_user_meta_data = EXCLUDED.raw_user_meta_data,
         updated_at = now();
 
-    -- 2. Insert or update in auth.identities
-    INSERT INTO auth.identities (
-        id,
-        user_id,
-        identity_data,
-        provider,
-        provider_id,
-        last_sign_in_at,
-        created_at,
-        updated_at
-    ) VALUES (
-        p_user_id::text,
-        p_user_id,
-        format('{"sub":"%s","email":"%s"}', p_user_id, p_email)::jsonb,
-        'email',
-        p_email,
-        now(),
-        now(),
-        now()
-    )
-    ON CONFLICT (provider, provider_id) DO UPDATE SET
-        identity_data = EXCLUDED.identity_data,
-        last_sign_in_at = now(),
-        updated_at = now();
+    -- 2. Insert or update in auth.identities (casting id to UUID to match newer Supabase schema)
+    IF EXISTS (SELECT 1 FROM auth.identities WHERE user_id = p_user_id AND provider = 'email') THEN
+        UPDATE auth.identities
+        SET identity_data = format('{"sub":"%s","email":"%s"}', p_user_id, lower(p_email))::jsonb,
+            last_sign_in_at = now(),
+            updated_at = now()
+        WHERE user_id = p_user_id AND provider = 'email';
+    ELSE
+        INSERT INTO auth.identities (
+            id,
+            user_id,
+            identity_data,
+            provider,
+            provider_id,
+            last_sign_in_at,
+            created_at,
+            updated_at
+        ) VALUES (
+            p_user_id, -- Passed as UUID (fixes ERROR 42804)
+            p_user_id,
+            format('{"sub":"%s","email":"%s"}', p_user_id, lower(p_email))::jsonb,
+            'email',
+            p_user_id::text,
+            now(),
+            now(),
+            now()
+        );
+    END IF;
 
     -- 3. Upsert corresponding profile in public.user_profiles
     INSERT INTO public.user_profiles (
@@ -102,16 +114,16 @@ BEGIN
         p_user_id,
         p_community_id,
         p_full_name,
-        p_email,
+        lower(p_email),
         p_phone,
-        p_role,
+        v_role_enum,
         true,
         true,
         true
     )
     ON CONFLICT (id) DO UPDATE SET
         full_name = EXCLUDED.full_name,
-        email = EXCLUDED.email,
+        email = lower(EXCLUDED.email),
         phone = EXCLUDED.phone,
         role = EXCLUDED.role,
         is_active = true,
@@ -125,28 +137,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ----------------------------------------------------------------------------
 
 -- 1. SECURITY GUARD (Gate Kiosk Terminal)
--- Email: guard@gatewaysecurity.in OR ramesh.guard@prestige.in
--- Password: Guard@123
 SELECT create_gateway_auth_user(
     'e0000000-0000-0000-0000-000000000003'::UUID,
     'guard@gatewaysecurity.in',
     'Guard@123',
     'Ramesh Kumar (Gate 1 Guard)',
     '+91 98765 43210',
-    'security_guard'::user_role,
+    'security_guard',
     'a0000000-0000-0000-0000-000000000001'::UUID
 );
 
 -- 2. APARTMENT OWNER / RESIDENT (Flat 1204 & 402)
--- Email: owner@gatewaysecurity.in OR ananya.sharma@gmail.com
--- Password: Owner@123
 SELECT create_gateway_auth_user(
     'e0000000-0000-0000-0000-000000000004'::UUID,
     'owner@gatewaysecurity.in',
     'Owner@123',
     'Aarav Sharma (Flat 1204 Owner)',
     '+91 98111 22334',
-    'resident'::user_role,
+    'resident',
     'a0000000-0000-0000-0000-000000000001'::UUID
 );
 
@@ -160,28 +168,24 @@ VALUES (
 ) ON CONFLICT (flat_id, user_id) DO NOTHING;
 
 -- 3. SOCIETY ADMIN (Estate Management Office)
--- Email: admin@gatewaysecurity.in OR rajesh.admin@prestige.in
--- Password: Admin@123
 SELECT create_gateway_auth_user(
     'e0000000-0000-0000-0000-000000000002'::UUID,
     'admin@gatewaysecurity.in',
     'Admin@123',
     'Rajesh Iyer (Estate Manager)',
     '+91 98450 12345',
-    'community_admin'::user_role,
+    'community_admin',
     'a0000000-0000-0000-0000-000000000001'::UUID
 );
 
 -- 4. SUPER ADMIN (Multi-Society Platform Operations)
--- Email: superadmin@gatewaysecurity.in
--- Password: Super@123
 SELECT create_gateway_auth_user(
     'e0000000-0000-0000-0000-000000000001'::UUID,
     'superadmin@gatewaysecurity.in',
     'Super@123',
     'Chief Operations Admin',
     '+91 99000 00001',
-    'super_admin'::user_role,
+    'super_admin',
     NULL
 );
 
