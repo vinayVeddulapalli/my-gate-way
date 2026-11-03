@@ -313,3 +313,14 @@ export function isValidStatusTransition(current: VisitorStatus, next: VisitorSta
       return false;
   }
 }
+
+// BLACKLIST & BANNED VISITORS (Phase 1 US3.3.2 & US5.4.1)
+export interface BlacklistEntry {
+  id: string;
+  community_id: string;
+  visitor_name: string;
+  visitor_phone: string;
+  reason: string;
+  created_at: string;
+  created_by_name: string;
+}

@@ -13,6 +13,7 @@ import {
   CheckCircle2, 
   Car, 
   AlertCircle,
+  AlertTriangle,
   Package,
   Wrench,
   User,
@@ -63,6 +64,8 @@ export default function RegisterVisitorPage() {
   useEffect(() => {
     return appStore.subscribe((s) => setState(s));
   }, []);
+
+  const blacklistedMatch = visitorPhone.length >= 5 ? appStore.isBlacklisted(visitorPhone) : undefined;
 
   const gates = state.gates;
   const blocks = state.blocks;
@@ -164,6 +167,11 @@ export default function RegisterVisitorPage() {
       newErrors.visitorPhone = 'Phone number is required.';
     } else if (!validateIndianPhone(visitorPhone)) {
       newErrors.visitorPhone = 'Enter a valid 10-digit Indian phone number.';
+    } else {
+      const blacklisted = appStore.isBlacklisted(visitorPhone);
+      if (blacklisted) {
+        newErrors.visitorPhone = `🚨 VISITOR BLACKLISTED: "${blacklisted.reason}". Entry strictly prohibited!`;
+      }
     }
 
     if (!selectedFlatId) {
@@ -384,6 +392,27 @@ export default function RegisterVisitorPage() {
 
           {/* 2. VISITOR BASIC INFORMATION */}
           <div className="space-y-4">
+            {/* Blacklist Alert Banner (Story US3.3.2) */}
+            {blacklistedMatch && (
+              <div className="p-4 bg-red-600 text-white rounded-2xl flex items-start gap-3 shadow-lg animate-pulse">
+                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-white" />
+                <div className="space-y-1">
+                  <div className="font-black text-sm uppercase tracking-wide">
+                    🚨 ENTRY BLOCKED: VISITOR ON SOCIETY BLACKLIST
+                  </div>
+                  <p className="text-xs text-red-100">
+                    <strong>{blacklistedMatch.visitor_name}</strong> (+91 {blacklistedMatch.visitor_phone}) is banned by RWA Admin.
+                  </p>
+                  <p className="text-xs text-red-100 font-medium">
+                    Reason: &ldquo;{blacklistedMatch.reason}&rdquo;
+                  </p>
+                  <div className="text-[11px] text-red-200 font-bold pt-0.5">
+                    Do not permit visitor through security barrier. Escalate to Head Supervisor.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               2. Agent / Visitor Identification & Contact
             </h2>

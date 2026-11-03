@@ -16,7 +16,8 @@ import {
   SosAlert,
   SosType,
   SosStatus,
-  isValidStatusTransition
+  isValidStatusTransition,
+  BlacklistEntry
 } from '@/types';
 import { soundNotifier } from './audio';
 import { supabase, isSupabaseConfigured } from './supabase';
@@ -35,6 +36,7 @@ export interface AppState {
   dailyHelpLogs: DailyHelpLog[];
   notices: Notice[];
   sosAlerts: SosAlert[];
+  blacklist: BlacklistEntry[];
   autoSimulateResident: boolean;
   connectionStatus: 'local' | 'connecting' | 'connected' | 'error';
 }
@@ -693,6 +695,18 @@ const defaultNotices: Notice[] = [
   }
 ];
 
+const defaultBlacklist: BlacklistEntry[] = [
+  {
+    id: 'bl-00000000-0000-0000-0000-000000000001',
+    community_id: defaultCommunity.id,
+    visitor_name: 'Unverified Sales Rep',
+    visitor_phone: '+91 91234 56789',
+    reason: 'Aggressive door-to-door soliciting without RWA permit. Banned by Committee.',
+    created_at: '2026-10-25T10:00:00.000Z',
+    created_by_name: 'Estate Management Office'
+  }
+];
+
 const defaultSosAlerts: SosAlert[] = [];
 
 export function getBaselineState(): AppState {
@@ -710,6 +724,7 @@ export function getBaselineState(): AppState {
     dailyHelpLogs: defaultDailyHelpLogs,
     notices: defaultNotices,
     sosAlerts: defaultSosAlerts,
+    blacklist: defaultBlacklist,
     autoSimulateResident: false,
     connectionStatus: isSupabaseConfigured ? 'connecting' : 'local'
   };
@@ -818,6 +833,7 @@ class AppStore {
           dailyHelpLogs: parsed.dailyHelpLogs || defaultDailyHelpLogs,
           notices: parsed.notices || defaultNotices,
           sosAlerts: parsed.sosAlerts || defaultSosAlerts,
+          blacklist: (parsed.blacklist && Array.isArray(parsed.blacklist)) ? parsed.blacklist : defaultBlacklist,
           connectionStatus: isSupabaseConfigured ? (this.state.connectionStatus || 'connecting') : 'local'
         };
 
@@ -2496,6 +2512,86 @@ class AppStore {
     };
     this.saveToStorage(this.state);
     this.notify();
+  }
+
+  // Society Visitor Blacklist (US3.3.2 & US5.4.1)
+  public isBlacklisted(phone: string): BlacklistEntry | null {
+    if (!phone) return null;
+    const cleanQuery = phone.replace(/\D/g, '');
+    if (cleanQuery.length < 5) return null;
+    const list = this.state.blacklist || [];
+    return list.find(entry => {
+      const cleanEntry = entry.visitor_phone.replace(/\D/g, '');
+      return cleanEntry.endsWith(cleanQuery) || cleanQuery.endsWith(cleanEntry) || cleanEntry === cleanQuery;
+    }) || null;
+  }
+
+  public addBlacklistEntry(entry: {
+    visitor_name: string;
+    visitor_phone: string;
+    reason: string;
+    created_by_name?: string;
+  }): BlacklistEntry {
+    const newEntry: BlacklistEntry = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      visitor_name: entry.visitor_name,
+      visitor_phone: entry.visitor_phone,
+      reason: entry.reason,
+      created_at: new Date().toISOString(),
+      created_by_name: entry.created_by_name || this.state.currentUser.full_name || 'Society Estate Office'
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'ADD_TO_BLACKLIST',
+      entity_type: 'blacklist',
+      entity_id: newEntry.id,
+      metadata: { visitor: newEntry.visitor_name, phone: newEntry.visitor_phone, reason: newEntry.reason },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      blacklist: [newEntry, ...(this.state.blacklist || [])],
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    return newEntry;
+  }
+
+  public removeBlacklistEntry(id: string): boolean {
+    const target = (this.state.blacklist || []).find(b => b.id === id);
+    if (!target) return false;
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'REMOVE_FROM_BLACKLIST',
+      entity_type: 'blacklist',
+      entity_id: id,
+      metadata: { visitor: target.visitor_name, phone: target.visitor_phone },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      blacklist: (this.state.blacklist || []).filter(b => b.id !== id),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+    return true;
   }
 }
 

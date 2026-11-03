@@ -19,7 +19,9 @@ import {
   Package,
   Boxes,
   KeyRound,
-  MapPin
+  MapPin,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
@@ -43,9 +45,24 @@ export default function GuardDashboardPage() {
   const [handoverModalReq, setHandoverModalReq] = useState<VisitorRequest | null>(null);
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
     return appStore.subscribe((s) => setState(s));
   }, []);
 
@@ -107,9 +124,23 @@ export default function GuardDashboardPage() {
       {/* Top Banner / Gate Info (Clean Wireframe Style) */}
       <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            Live Guard Terminal • Main Gate 1
+          <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              Live Guard Terminal • Main Gate 1
+            </span>
+            <span className="text-slate-300">•</span>
+            {isOnline && state.connectionStatus === 'connected' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                Cloud Synced (Live)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs" title="Terminal is operating in offline resilient mode. All data is cached locally on this device.">
+                <WifiOff className="w-3 h-3 text-amber-600" />
+                Offline Kiosk Mode ({state.visitorRequests.length} cached locally)
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1">
             Gate Security Control Panel

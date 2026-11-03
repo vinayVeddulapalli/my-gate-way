@@ -19,7 +19,8 @@ import {
   Building2,
   Calendar,
   Bell,
-  LogOut
+  LogOut,
+  Ban
 } from 'lucide-react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ActiveSosBanner } from '@/components/common/ActiveSosBanner';
@@ -345,6 +346,27 @@ export default function AdminDashboardPage() {
             </div>
             <span className="text-xs font-bold text-amber-600 flex items-center gap-1 mt-3">
               <span>Notice Board</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </span>
+          </Link>
+
+          <Link
+            href="/admin/blacklist"
+            className="p-5 bg-white rounded-2xl border border-rose-200/80 shadow-xs hover:border-rose-500 hover:shadow-md transition-all flex flex-col justify-between group"
+          >
+            <div>
+              <div className="p-2.5 bg-rose-50 text-rose-700 rounded-xl w-fit mb-3 transition-colors">
+                <Ban className="w-5 h-5" />
+              </div>
+              <h3 className="font-extrabold text-base text-slate-900 group-hover:text-rose-800">
+                Visitor Blacklist & Security Bans
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Maintain {state.blacklist?.length || 0} banned profiles with instant gate-level entry interception and alerts.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-rose-600 flex items-center gap-1 mt-3">
+              <span>Manage Blacklist</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </span>
           </Link>
