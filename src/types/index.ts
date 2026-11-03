@@ -186,6 +186,8 @@ export interface VisitorRequest {
   // Escalations
   supervisor_escalated?: boolean;
   supervisor_notes?: string;
+  call_requested?: boolean;
+  call_requested_at?: string;
 
   created_at: string;
   updated_at: string;

@@ -16,3 +16,4 @@ services:
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
         sync: false
+

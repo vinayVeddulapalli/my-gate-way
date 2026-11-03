@@ -15,6 +15,7 @@ import {
   UserCheck, 
   Building2,
   PhoneCall,
+  Bell,
   Sparkles,
   Package,
   Boxes
@@ -23,6 +24,7 @@ import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { getCategoryBadge } from '@/lib/utils';
 import { VisitorRequest } from '@/types';
 import { PhotoDisplay } from '@/components/common/PhotoDisplay';
+import { soundNotifier } from '@/lib/audio';
 
 function PendingContent() {
   const router = useRouter();
@@ -90,6 +92,11 @@ function PendingContent() {
       </div>
     );
   }
+
+  const destFlat = state.flats.find(f => f.id === activeRequest.flat_id || f.flat_number === activeRequest.flat_number) || state.flats[0];
+  const primaryPhone = destFlat?.primary_resident_phone || '+91 98111 22334';
+  const primaryName = destFlat?.primary_resident_name || 'Aarav Sharma';
+  const intercomNum = destFlat?.intercom_number || `1${activeRequest.flat_number}`;
 
   const catBadge = getCategoryBadge(activeRequest.category);
   const minutes = Math.floor(secondsRemaining / 60);
@@ -231,6 +238,25 @@ function PendingContent() {
             <h1 className="text-xl sm:text-2xl font-black">
               Visitor Currently Inside Premises
             </h1>
+          </div>
+        )}
+
+        {/* Resident Call Requested Alert Banner */}
+        {activeRequest.call_requested && (
+          <div className="bg-amber-500 text-white p-3.5 px-6 flex items-center justify-between gap-3 animate-pulse">
+            <div className="flex items-center gap-2">
+              <PhoneCall className="w-5 h-5 text-white" />
+              <div>
+                <div className="text-xs font-black uppercase tracking-wider">Resident Requested Intercom Call</div>
+                <div className="text-[11px] text-amber-100">Please speak with {primaryName} before permitting visitor entry.</div>
+              </div>
+            </div>
+            <a
+              href={`tel:${primaryPhone}`}
+              className="px-3 py-1.5 bg-white text-amber-900 font-extrabold text-xs rounded-xl shadow-xs shrink-0 hover:bg-amber-50 transition-colors"
+            >
+              Call {primaryPhone}
+            </a>
           </div>
         )}
 
@@ -392,35 +418,90 @@ function PendingContent() {
               </div>
             )}
 
-            {/* If Pending: Guard assistance tools */}
+            {/* If Pending: Full Visitor Escalation Protocol (Phase 1) */}
             {activeRequest.status === 'pending' && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <a
-                    href="tel:2402"
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 transition-colors"
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span className="uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    <span>Visitor Escalation Protocol</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">Step-by-step gate assistance</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {/* Step 1: Repeat Buzzer Chime */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundNotifier.playIncomingAlert();
+                      alert(`Buzzer alert re-sent to ${primaryName}'s registered device!`);
+                    }}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-300 transition-colors shadow-2xs cursor-pointer"
                   >
-                    <Building2 className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Ring Intercom #2402</span>
+                    <Bell className="w-3.5 h-3.5 text-amber-600" />
+                    <span>1. Repeat Push Buzzer</span>
+                  </button>
+
+                  {/* Step 2: Intercom Call to Flat */}
+                  <a
+                    href={`tel:${intercomNum}`}
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-300 transition-colors shadow-2xs"
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>2. Ring Intercom #${intercomNum}</span>
                   </a>
 
+                  {/* Step 3: Ring Secondary Family Member */}
+                  <a
+                    href="tel:+919811122335"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-300 transition-colors shadow-2xs"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-purple-600" />
+                    <span>3. Ring Family (Vikram)</span>
+                  </a>
+
+                  {/* Step 4: Escalate to Supervisor */}
                   <button
                     type="button"
                     onClick={() => setIsEscalateModalOpen(true)}
-                    className="flex items-center justify-center gap-1.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-300 transition-colors"
+                    className="flex items-center justify-center gap-1.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl border border-amber-300 transition-colors shadow-2xs cursor-pointer"
                   >
-                    <PhoneCall className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Escalate to Supervisor</span>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>4. Escalate to Supervisor</span>
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsCancelModalOpen(true)}
-                  className="w-full py-2.5 text-slate-500 hover:text-red-600 text-xs font-semibold rounded-xl hover:bg-slate-50 transition-colors"
-                >
-                  Cancel Registration Request
-                </button>
+                {/* Option for Deliveries to Move to Gate Shelf */}
+                {activeRequest.category === 'delivery' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      appStore.authorizeLeaveAtGate(activeRequest.id, state.users[1].id, 'Unanswered timeout: Stored at gate parcel shelf');
+                    }}
+                    className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-bold text-xs rounded-xl border border-indigo-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Package className="w-4 h-4 text-indigo-700" />
+                    <span>Timeout: Store at Main Gate Shelf (Generate OTP)</span>
+                  </button>
+                )}
+
+                <div className="pt-1 flex items-center justify-between border-t border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleCancelRequest('Unanswered timeout: Denied at gate')}
+                    className="text-red-600 hover:text-red-800 font-bold hover:underline cursor-pointer"
+                  >
+                    Deny Entry (Timeout)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCancelModalOpen(true)}
+                    className="text-slate-500 hover:text-slate-700 text-[11px] hover:underline cursor-pointer"
+                  >
+                    Cancel Registration
+                  </button>
+                </div>
               </div>
             )}
           </div>

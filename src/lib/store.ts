@@ -1971,6 +1971,55 @@ class AppStore {
     return true;
   }
 
+  // Resident asks guard to call before approving entry
+  public requestCallFromGuard(requestId: string, residentId: string): boolean {
+    const req = this.state.visitorRequests.find(r => r.id === requestId);
+    if (!req) return false;
+
+    const caller = this.state.users.find(u => u.id === residentId) || this.state.currentUser;
+
+    const updated: VisitorRequest = {
+      ...req,
+      call_requested: true,
+      call_requested_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: caller.id,
+      actor_name: caller.full_name,
+      actor_role: caller.role,
+      action: 'REQUEST_CALL_FROM_GUARD',
+      entity_type: 'visitor_requests',
+      entity_id: req.id,
+      metadata: { visitor: req.visitor_name, requested_by: caller.full_name },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      visitorRequests: this.state.visitorRequests.map(r => r.id === requestId ? updated : r),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('visitor_requests').update({
+        call_requested: true,
+        updated_at: updated.updated_at
+      }).eq('id', requestId).then(({ error }) => {
+        if (error) console.error('Supabase request call error:', error);
+      });
+    }
+
+    soundNotifier.playIncomingAlert();
+    return true;
+  }
+
   // Resident Creates Pre-approved Guest Pass
   public createGuestPass(params: {
     flat_id?: string;

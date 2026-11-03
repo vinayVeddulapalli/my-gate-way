@@ -24,7 +24,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Building2,
-  Heart
+  Heart,
+  PhoneCall
 } from 'lucide-react';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
 import { LeaveAtGateModal } from '@/components/resident/LeaveAtGateModal';
@@ -88,6 +89,16 @@ export default function ResidentHomePage() {
       setSuccessBanner(`Entry declined for ${req.visitor_name}. Security barrier alerted.`);
       setRejectModalReq(null);
       setTimeout(() => setSuccessBanner(null), 4000);
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleAskGuardToCall = (req: VisitorRequest) => {
+    try {
+      appStore.requestCallFromGuard(req.id, currentUser.id);
+      setSuccessBanner("Guard desk notified to call you directly on phone/intercom before approving.");
+      setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: unknown) {
       alert((err as Error).message);
     }
@@ -276,6 +287,25 @@ export default function ResidentHomePage() {
                 <Check className="w-4 h-4" />
                 <span>Approve entry</span>
               </button>
+            </div>
+
+            {/* Ask Guard to Call option (Escalation chain) */}
+            <div className="pt-1">
+              {activeWaitingVisitor.call_requested ? (
+                <div className="w-full p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-center text-[11px] font-bold text-amber-800 flex items-center justify-center gap-1.5">
+                  <PhoneCall className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                  <span>Call Requested — Guard desk will call you shortly</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleAskGuardToCall(activeWaitingVisitor)}
+                  className="w-full text-center text-xs font-semibold text-[#808683] hover:text-[#E05D44] hover:underline flex items-center justify-center gap-1.5 py-1 transition-colors cursor-pointer"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Ask guard to call before approving</span>
+                </button>
+              )}
             </div>
 
             {/* Option to Leave at Gate for Deliveries */}

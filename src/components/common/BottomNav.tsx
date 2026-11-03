@@ -9,10 +9,10 @@ import {
   UserPlus, 
   Users, 
   History, 
-  LayoutGrid, 
   Home, 
-  Handshake, 
-  Store,
+  QrCode,
+  Bell,
+  Building2,
   LayoutDashboard,
   Building,
   FileSpreadsheet
@@ -83,82 +83,82 @@ export const BottomNav: React.FC = () => {
     );
   }
 
-  // Resident 5 Bottom Tabs: Social, Homes, Community, Buy & Sell, Stores (Exact Mobile APK & Wireframes)
+  // Resident Phase 1 MVP 5 Bottom Tabs: Home, Passes, Helpers, Notices, Flats & Settings
   if (role === 'resident' || role === 'family_member') {
-    const isSocial = pathname === '/resident';
-    const isHomes = pathname.startsWith('/resident/homes');
-    const isCommunity = pathname.startsWith('/resident/community') || pathname.startsWith('/resident/notices');
-    const isMarketplace = pathname.startsWith('/resident/marketplace');
-    const isStores = pathname.startsWith('/resident/stores');
+    const isHome = pathname === '/resident';
+    const isPasses = pathname.startsWith('/resident/passes');
+    const isHelpers = pathname.startsWith('/resident/helpers');
+    const isNotices = pathname.startsWith('/resident/notices') || pathname.startsWith('/resident/community');
+    const isSettings = pathname.startsWith('/resident/settings') || pathname.startsWith('/resident/homes');
 
     return (
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E7E6E1] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         <div className="grid grid-cols-5 h-16 max-w-lg mx-auto">
-          {/* 1. Social */}
+          {/* 1. Home / Gate Status */}
           <Link
             href="/resident"
             className={`flex flex-col items-center justify-center gap-1 transition-colors ${
-              isSocial ? 'text-[#142E31] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
-            }`}
-          >
-            <div className="w-8 h-8 flex items-center justify-center">
-              <LayoutGrid className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] tracking-tight">Social</span>
-          </Link>
-
-          {/* 2. Homes */}
-          <Link
-            href="/resident/homes"
-            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
-              isHomes ? 'text-[#142E31] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
+              isHome ? 'text-[#E05D44] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
             }`}
           >
             <div className="w-8 h-8 flex items-center justify-center">
               <Home className="w-5 h-5" />
             </div>
-            <span className="text-[10px] tracking-tight">Homes</span>
+            <span className="text-[10px] tracking-tight">Home</span>
           </Link>
 
-          {/* 3. Community (Central Tab with circle border from Flutter app_shell.dart line 405-412) */}
+          {/* 2. Guest Passes */}
           <Link
-            href="/resident/community"
+            href="/resident/passes"
             className={`flex flex-col items-center justify-center gap-1 transition-colors ${
-              isCommunity ? 'text-[#142E31] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
+              isPasses ? 'text-[#E05D44] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
+            }`}
+          >
+            <div className="w-8 h-8 flex items-center justify-center">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] tracking-tight">Passes</span>
+          </Link>
+
+          {/* 3. Daily Help (Maids, Drivers) */}
+          <Link
+            href="/resident/helpers"
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+              isHelpers ? 'text-[#E05D44] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
             }`}
           >
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              isCommunity ? 'border-[1.7px] border-[#CEDCB6] bg-[#F4F9F2]' : 'border-[1.7px] border-[#CEDCB6]'
+              isHelpers ? 'border-[1.7px] border-emerald-400 bg-emerald-50 text-emerald-800' : 'border-[1.7px] border-[#CEDCB6] text-[#142E31]'
             }`}>
-              <Users className="w-4 h-4 text-[#142E31]" />
+              <Users className="w-4 h-4" />
             </div>
-            <span className="text-[10px] tracking-tight">Community</span>
+            <span className="text-[10px] tracking-tight">Help</span>
           </Link>
 
-          {/* 4. Buy & Sell */}
+          {/* 4. Notices & Community */}
           <Link
-            href="/resident/marketplace"
+            href="/resident/notices"
             className={`flex flex-col items-center justify-center gap-1 transition-colors ${
-              isMarketplace ? 'text-[#142E31] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
+              isNotices ? 'text-[#E05D44] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
             }`}
           >
             <div className="w-8 h-8 flex items-center justify-center">
-              <Handshake className="w-5 h-5" />
+              <Bell className="w-5 h-5" />
             </div>
-            <span className="text-[10px] tracking-tight">Buy & Sell</span>
+            <span className="text-[10px] tracking-tight">Notices</span>
           </Link>
 
-          {/* 5. Stores */}
+          {/* 5. Flats & Settings */}
           <Link
-            href="/resident/stores"
+            href="/resident/settings"
             className={`flex flex-col items-center justify-center gap-1 transition-colors ${
-              isStores ? 'text-[#142E31] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
+              isSettings ? 'text-[#E05D44] font-extrabold' : 'text-[#808683] hover:text-[#142E31] font-medium'
             }`}
           >
             <div className="w-8 h-8 flex items-center justify-center">
-              <Store className="w-5 h-5" />
+              <Building2 className="w-5 h-5" />
             </div>
-            <span className="text-[10px] tracking-tight">Stores</span>
+            <span className="text-[10px] tracking-tight">Flats</span>
           </Link>
         </div>
       </nav>
