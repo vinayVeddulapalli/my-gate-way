@@ -1198,7 +1198,12 @@ class AppStore {
   // --- ACTIONS ---
 
   public switchActiveUser(identifier: string) {
-    const found = this.state.users.find(u => u.id === identifier || u.role === identifier);
+    const lower = identifier.toLowerCase();
+    const found = this.state.users.find(u => 
+      u.id === identifier || 
+      u.role === identifier || 
+      (u.email && u.email.toLowerCase() === lower)
+    );
     if (found) {
       this.state = { ...this.state, currentUser: found };
       this.saveToStorage(this.state);
