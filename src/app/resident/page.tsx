@@ -94,22 +94,22 @@ export default function ResidentHomePage() {
     }
   };
 
-  const handleAskGuardToCall = (req: VisitorRequest) => {
-    try {
-      appStore.requestCallFromGuard(req.id, currentUser.id);
-      setSuccessBanner("Guard desk notified to call you directly on phone/intercom before approving.");
-      setTimeout(() => setSuccessBanner(null), 5000);
-    } catch (err: unknown) {
-      alert((err as Error).message);
-    }
-  };
-
   const handleLeaveAtGateConfirm = (notes?: string) => {
     if (!leaveAtGateModalReq) return;
     try {
       const res = appStore.authorizeLeaveAtGate(leaveAtGateModalReq.id, currentUser.id, notes);
       setSuccessBanner(`Delivery authorized to be left at Main Gate Parcel Desk. Collection OTP #${res.otp} generated.`);
       setLeaveAtGateModalReq(null);
+      setTimeout(() => setSuccessBanner(null), 5000);
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
+
+  const handleAskGuardToCall = (req: VisitorRequest) => {
+    try {
+      appStore.requestCallFromGuard(req.id, currentUser.id);
+      setSuccessBanner('Guard desk notified to call you directly on phone/intercom before approving.');
       setTimeout(() => setSuccessBanner(null), 5000);
     } catch (err: unknown) {
       alert((err as Error).message);
