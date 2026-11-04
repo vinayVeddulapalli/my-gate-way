@@ -396,6 +396,38 @@ export default function ResidentHomePage() {
     </div>
   );
 
+  // Role Guard: Prevent on-duty guards from seeing resident personal app
+  if (currentUser.role === 'security_guard') {
+    return (
+      <div className="max-w-md mx-auto my-16 px-4">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#FDEEEB] border border-[#F6D0C7] text-[#E05D44] flex items-center justify-center">
+            <ShieldCheck className="w-8 h-8 text-[#E05D44]" />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Resident Portal Restricted</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            You are currently signed in as on-duty officer <strong className="text-slate-900">{currentUser.full_name}</strong> (Security Guard). 
+            The Resident App is for apartment residents and tenants to approve their personal visitors.
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href="/guard"
+              className="w-full py-3 px-4 bg-[#E05D44] hover:bg-[#c44a33] text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+            >
+              Go to Guard Control Panel (/guard)
+            </Link>
+            <Link
+              href="/login?tab=resident"
+              className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors"
+            >
+              Sign In as Resident
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#EDE8E0] py-6 pb-28 px-4 sm:px-6">
       <div className="max-w-md lg:max-w-6xl mx-auto space-y-5">

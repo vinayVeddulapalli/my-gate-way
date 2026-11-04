@@ -63,6 +63,38 @@ export default function AdminDashboardPage() {
     setIsExporting(false);
   };
 
+  // Role Access Guard: Only Community Admins & Superadmins can access the Admin Dashboard
+  if (state.currentUser.role !== 'community_admin' && state.currentUser.role !== 'super_admin') {
+    return (
+      <div className="max-w-md mx-auto my-16 px-4">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8 text-amber-600" />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Admin Office Access Restricted</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            You are currently signed in as <strong className="text-slate-900">{state.currentUser.full_name}</strong> ({state.currentUser.role.replace('_', ' ')}). 
+            Society governance ledgers, audit trails, and staff roster are restricted to Community Administrators.
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href={state.currentUser.role === 'security_guard' ? '/guard' : '/resident'}
+              className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+            >
+              Go to My Authorized Dashboard ({state.currentUser.role === 'security_guard' ? 'Guard Terminal' : 'Resident App'})
+            </Link>
+            <Link
+              href="/login?tab=admin"
+              className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors"
+            >
+              Sign In with Admin Credentials
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
       {/* Real-time Emergency SOS Alert Banner */}

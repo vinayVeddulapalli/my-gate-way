@@ -127,6 +127,38 @@ export default function GuardDashboardPage() {
     );
   }
 
+  // Role Access Guard: Only Security Guards & Superadmins can access the Gate Terminal
+  if (state.currentUser.role !== 'security_guard' && state.currentUser.role !== 'super_admin') {
+    return (
+      <div className="max-w-md mx-auto my-16 px-4">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 text-center space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8 text-amber-600" />
+          </div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Gate Terminal Access Restricted</h2>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            You are currently signed in as <strong className="text-slate-900">{state.currentUser.full_name}</strong> ({state.currentUser.role.replace('_', ' ')}). 
+            The Gate Security Control Panel and physical entry authorization are reserved for on-duty security officers.
+          </p>
+          <div className="pt-2 flex flex-col gap-2.5">
+            <Link
+              href={state.currentUser.role === 'community_admin' ? '/admin' : '/resident'}
+              className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+            >
+              Go to My Dashboard ({state.currentUser.role === 'community_admin' ? 'Admin Console' : 'Resident App'})
+            </Link>
+            <Link
+              href="/login?tab=guard"
+              className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-colors"
+            >
+              Sign In with Guard Credentials
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24 md:pb-12">
       {/* Real-time Emergency SOS Alert Banner */}
