@@ -148,7 +148,21 @@ export const ParcelHandoverModal: React.FC<ParcelHandoverModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
                 <span>Enter Resident Collection OTP <span className="text-red-500">*</span></span>
-                <span className="text-[11px] font-normal text-slate-500">Provided in Resident App</span>
+                {parcelRequest.collection_otp ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtp(parcelRequest.collection_otp || '');
+                      setError(null);
+                    }}
+                    className="text-[10px] font-mono font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                    title="Click to auto-fill resident's pickup PIN for testing"
+                  >
+                    Test PIN: {parcelRequest.collection_otp} (Click to fill)
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-normal text-slate-500">Provided in Resident App</span>
+                )}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
