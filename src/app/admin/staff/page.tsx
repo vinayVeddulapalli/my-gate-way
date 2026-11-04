@@ -40,6 +40,7 @@ export default function AdminStaffPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('security_guard');
+  const [formResidentType, setFormResidentType] = useState<'owner' | 'tenant'>('owner');
   const [formPassword, setFormPassword] = useState('Password@123');
   const [formFlatId, setFormFlatId] = useState('');
 
@@ -101,6 +102,7 @@ export default function AdminStaffPage() {
       email: formEmail,
       phone: formPhone,
       role: formRole,
+      resident_type: formRole === 'resident' ? formResidentType : undefined,
       password: formPassword,
       flat_id: formRole === 'resident' ? formFlatId : undefined
     });
@@ -557,6 +559,23 @@ export default function AdminStaffPage() {
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono font-bold focus:ring-2 focus:ring-slate-900"
                 />
               </div>
+
+              {/* Occupancy Type (If resident) */}
+              {formRole === 'resident' && (
+                <div>
+                  <label className="text-xs font-bold text-slate-800 block mb-1">
+                    Occupancy Type
+                  </label>
+                  <select
+                    value={formResidentType}
+                    onChange={(e) => setFormResidentType(e.target.value as 'owner' | 'tenant')}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 cursor-pointer"
+                  >
+                    <option value="owner">Property Owner (Landlord)</option>
+                    <option value="tenant">Renter / Tenant (Occupant)</option>
+                  </select>
+                </div>
+              )}
 
               {/* Flat Selector (If resident) */}
               {(formRole === 'resident' || formRole === 'family_member') && (

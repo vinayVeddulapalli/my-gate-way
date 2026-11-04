@@ -21,7 +21,7 @@ import {
   UserRole
 } from '@/types';
 import { soundNotifier } from './audio';
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase, isSupabaseConfigured, createIsolatedAuthClient } from './supabase';
 
 export interface AppState {
   currentCommunity: Community;
@@ -2947,29 +2947,35 @@ class AppStore {
     email: string;
     phone: string;
     role: UserRole;
+    resident_type?: 'owner' | 'tenant' | 'family';
     flat_id?: string;
     password?: string;
-  }): Promise<{ user: UserProfile; error?: string }> {
+    community_id?: string;
+  }): Promise<{ user: UserProfile; error?: string; supabaseSynced?: boolean }> {
     const cleanEmail = params.email.trim().toLowerCase();
     const existing = this.state.users.find(u => u.email.toLowerCase() === cleanEmail);
     if (existing) {
-      return { user: existing, error: 'User with this email already exists' };
+      return { user: existing, error: 'User with this email already exists', supabaseSynced: false };
     }
 
     let authUserId = generateUUID();
+    let supabaseSuccess = false;
 
-    // If Supabase is connected and password provided, create in Supabase Auth
-    if (isSupabaseConfigured && supabase && params.password) {
+    // Use isolated Supabase client without session persistence to create user in auth.users
+    // without hijacking the active admin's current browser session
+    const isolatedClient = createIsolatedAuthClient();
+    if (isolatedClient && params.password) {
       try {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await isolatedClient.auth.signUp({
           email: cleanEmail,
           password: params.password,
           options: {
             data: {
-              full_name: params.full_name,
-              phone: params.phone,
+              full_name: params.full_name.trim(),
+              phone: params.phone.trim(),
               role: params.role,
-              community_id: this.state.currentCommunity.id
+              resident_type: params.resident_type || (params.role === 'resident' ? 'owner' : undefined),
+              community_id: params.community_id || this.state.currentCommunity.id
             }
           }
         });
@@ -2977,6 +2983,7 @@ class AppStore {
           console.warn('Supabase Auth signUp notice:', error.message);
         } else if (data?.user?.id) {
           authUserId = data.user.id;
+          supabaseSuccess = true;
         }
       } catch (err) {
         console.warn('Supabase signup bypass:', err);
@@ -2988,11 +2995,12 @@ class AppStore {
 
     const newUser: UserProfile = {
       id: authUserId,
-      community_id: this.state.currentCommunity.id,
+      community_id: params.community_id || this.state.currentCommunity.id,
       full_name: params.full_name.trim(),
       email: cleanEmail,
       phone: params.phone.trim(),
       role: params.role,
+      resident_type: params.resident_type || (params.role === 'resident' ? 'owner' : undefined),
       flat_id: params.flat_id,
       flat_display: flatDisplay,
       owned_flat_ids: params.flat_id ? [params.flat_id] : [],
@@ -3011,7 +3019,13 @@ class AppStore {
       action: 'CREATE_USER',
       entity_type: 'user_profiles',
       entity_id: newUser.id,
-      metadata: { full_name: newUser.full_name, email: newUser.email, role: newUser.role },
+      metadata: { 
+        full_name: newUser.full_name, 
+        email: newUser.email, 
+        role: newUser.role,
+        resident_type: newUser.resident_type,
+        supabase_synced: supabaseSuccess
+      },
       created_at: new Date().toISOString()
     };
 
@@ -3024,33 +3038,38 @@ class AppStore {
     this.saveToStorage(this.state);
     this.notify();
 
-    // Async push to Supabase user_profiles & flat_residents
+    // Direct push to Supabase public.user_profiles & public.flat_residents
     if (isSupabaseConfigured && supabase) {
-      supabase.from('user_profiles').upsert({
-        id: newUser.id,
-        community_id: newUser.community_id,
-        full_name: newUser.full_name,
-        email: newUser.email,
-        phone: newUser.phone,
-        role: newUser.role,
-        is_active: true
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase user profile sync:', error.message);
-      });
-
-      if (params.flat_id) {
-        supabase.from('flat_residents').upsert({
-          flat_id: params.flat_id,
-          user_id: newUser.id,
-          is_primary_owner: newUser.role === 'resident',
-          is_approved: true
-        }).then(({ error }) => {
-          if (error) console.warn('Supabase flat resident sync:', error.message);
+      try {
+        const { error: profileErr } = await supabase.from('user_profiles').upsert({
+          id: newUser.id,
+          community_id: newUser.community_id,
+          full_name: newUser.full_name,
+          email: newUser.email,
+          phone: newUser.phone,
+          role: newUser.role,
+          is_active: true
         });
+        if (!profileErr) {
+          supabaseSuccess = true;
+        } else {
+          console.warn('Supabase user profile sync error:', profileErr.message);
+        }
+
+        if (params.flat_id) {
+          await supabase.from('flat_residents').upsert({
+            flat_id: params.flat_id,
+            user_id: newUser.id,
+            is_primary_owner: newUser.role === 'resident' && newUser.resident_type !== 'tenant',
+            is_approved: true
+          });
+        }
+      } catch (e) {
+        console.warn('Supabase profile/flat sync exception:', e);
       }
     }
 
-    return { user: newUser };
+    return { user: newUser, supabaseSynced: supabaseSuccess };
   }
 
   public async updateUser(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {

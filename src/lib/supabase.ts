@@ -23,6 +23,22 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
   : null;
 
 /**
+ * Create an isolated Supabase client without persistent session storage.
+ * Used for admin credential provisioning so that creating new accounts in Supabase Auth
+ * does not overwrite or swap the active admin's browser session.
+ */
+export function createIsolatedAuthClient(): SupabaseClient | null {
+  if (!isSupabaseConfigured || !supabaseUrl || !supabaseAnonKey) return null;
+  return createClient(supabaseUrl as string, supabaseAnonKey as string, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
+}
+
+/**
  * Convert base64 data URL to binary Blob for Supabase Storage uploads
  */
 export function dataUrlToBlob(dataUrl: string): Blob {
