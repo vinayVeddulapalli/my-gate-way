@@ -64,6 +64,17 @@ export default function ResidentHomePage() {
   const currentUser = state.currentUser;
   const currentFlat = state.flats.find(f => f.id === currentUser.flat_id) || state.flats[0];
 
+  // STRICT PRIVACY SEPARATION (Owner / Landlord vs Tenant / Renter)
+  const isRentedFlat = currentFlat.occupancy_type === 'rented';
+  const isTenantOfThisFlat = isRentedFlat && (
+    currentUser.resident_type === 'tenant' ||
+    currentUser.full_name.toLowerCase() === (currentFlat.tenant_name || '').toLowerCase() ||
+    currentUser.phone === currentFlat.tenant_phone ||
+    (currentUser.flat_id === currentFlat.id && currentUser.resident_type !== 'owner')
+  );
+  // Is the current user an Owner / Landlord viewing a rented investment property?
+  const isLandlordViewingRentedFlat = isRentedFlat && !isTenantOfThisFlat;
+
   // Requests for this flat (resilient match on flat_id or flat_number)
   const flatRequests = state.visitorRequests.filter(r => 
     r.flat_id === currentFlat.id || r.flat_number === currentFlat.flat_number
@@ -72,9 +83,10 @@ export default function ResidentHomePage() {
   const gateParcels = flatRequests.filter(r => r.status === 'leave_at_gate');
   const recentVisits = flatRequests.slice(0, 3);
 
-  const activeWaitingVisitor = pendingRequests.length > 0 ? pendingRequests[0] : null;
+  // When a landlord is viewing a rented flat, activeWaitingVisitor is suppressed for tenant privacy!
+  const activeWaitingVisitor = isLandlordViewingRentedFlat ? null : (pendingRequests.length > 0 ? pendingRequests[0] : null);
 
-  // Cross-flat visitor check: any pending visitor for any other flat owned by this resident
+  // Cross-flat visitor check: only alert owner if another SELF-OCCUPIED or VACANT property has a visitor
   const allOwnedFlatIds = Array.from(new Set([
     currentUser.flat_id,
     ...(currentUser.owned_flat_ids || [])
@@ -83,12 +95,14 @@ export default function ResidentHomePage() {
   const allOwnedFlats = state.flats.filter(f => allOwnedFlatIds.includes(f.id));
   const allOwnedFlatNumbers = allOwnedFlats.map(f => f.flat_number);
 
-  const pendingForOtherFlat = state.visitorRequests.find(r => 
-    (allOwnedFlatIds.includes(r.flat_id) || Boolean(r.flat_number && allOwnedFlatNumbers.includes(r.flat_number))) &&
-    r.flat_id !== currentFlat.id &&
-    r.flat_number !== currentFlat.flat_number &&
-    r.status === 'pending'
-  );
+  const pendingForOtherFlat = state.visitorRequests.find(r => {
+    if (r.status !== 'pending') return false;
+    if (r.flat_id === currentFlat.id || r.flat_number === currentFlat.flat_number) return false;
+    const targetFlat = state.flats.find(f => f.id === r.flat_id || f.flat_number === r.flat_number);
+    // Never bother landlord with a tenant's personal guests or food deliveries
+    if (targetFlat && targetFlat.occupancy_type === 'rented') return false;
+    return allOwnedFlatIds.includes(r.flat_id) || Boolean(r.flat_number && allOwnedFlatNumbers.includes(r.flat_number));
+  });
 
   const handleApproveConfirm = (req: VisitorRequest) => {
     try {
@@ -136,7 +150,114 @@ export default function ResidentHomePage() {
 
   /* Render At-Your-Gate Card or Landlord Asset Card */
   const renderGateCard = () => {
-    // 1. HIGHEST PRIORITY: If there is an active visitor waiting at the gate for this flat
+    // 1. If user is a Landlord viewing a rented flat, display Landlord Asset Mode & Privacy Shield
+    if (isLandlordViewingRentedFlat) {
+      return (
+        <div className="bg-white rounded-3xl border border-blue-200/90 p-5 space-y-4 shadow-xs animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-900">
+                Landlord Portfolio Mode · Rented Property
+              </span>
+            </div>
+            <span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border border-blue-100">
+              {currentFlat.block_name || 'Tower A'} · Flat {currentFlat.flat_number}
+            </span>
+          </div>
+
+          <div className="p-4 bg-blue-50/70 rounded-2xl border border-blue-100 space-y-1.5">
+            <div className="text-xs font-bold text-blue-950 flex items-center justify-between">
+              <span>Active Tenant:</span>
+              <span className="text-emerald-700 font-extrabold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Lease Active</span>
+            </div>
+            <div className="text-base font-black text-[#142E31]">
+              {currentFlat.tenant_name || 'Suresh Patel'}
+            </div>
+            <div className="text-xs text-[#808683] flex items-center gap-2 flex-wrap">
+              <span>Phone: {currentFlat.tenant_phone || '+91 97333 44556'}</span>
+              <span>•</span>
+              <span>Lease valid till {currentFlat.lease_end_date || '30 Nov 2026'}</span>
+            </div>
+          </div>
+
+          {/* Privacy Shield Notice (DPDP Compliance) */}
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-1 text-xs text-emerald-950">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Tenant Privacy Shield Active (DPDP Act 2023)</span>
+            </div>
+            <p className="text-[11px] text-emerald-800 leading-relaxed">
+              Daily visitor gate approvals, courier OTPs, and maid entries route directly to tenant <strong>{currentFlat.tenant_name}</strong>. As owner, you manage property financials, lease, and maintenance.
+            </p>
+          </div>
+
+          {/* Financials & Maintenance Overview */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="p-3 bg-[#F6F5F2] rounded-2xl border border-[#E7E6E1]">
+              <div className="text-[11px] text-[#808683] font-medium">Monthly Rental Income</div>
+              <div className="text-base font-black text-[#142E31] mt-0.5">
+                ₹{currentFlat.monthly_rent?.toLocaleString('en-IN') || '38,000'}/mo
+              </div>
+              <div className="text-[10px] text-emerald-700 font-semibold mt-1">Paid on 1st of month</div>
+            </div>
+
+            <div className="p-3 bg-[#F6F5F2] rounded-2xl border border-[#E7E6E1]">
+              <div className="text-[11px] text-[#808683] font-medium">Society Maintenance</div>
+              <div className="text-base font-black text-emerald-800 mt-0.5">
+                ₹{currentFlat.maintenance_amount || 3800}/mo
+              </div>
+              <div className="text-[10px] text-emerald-700 font-semibold mt-1">Status: Paid (Up-to-date)</div>
+            </div>
+          </div>
+
+          {/* Landlord Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => alert(`Dialing tenant ${currentFlat.tenant_name} (${currentFlat.tenant_phone})...`)}
+              className="flex-1 py-2.5 bg-[#142E31] hover:bg-black text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              Contact Tenant
+            </button>
+            <button
+              onClick={() => alert(`Maintenance Receipt #PM-${currentFlat.flat_number}-2026 sent to your registered email.`)}
+              className="flex-1 py-2.5 bg-[#F6F5F2] hover:bg-[#EAE6DE] text-[#142E31] text-xs font-bold rounded-xl transition-colors cursor-pointer border border-[#E7E6E1]"
+            >
+              Society Receipt
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. If flat is vacant, show Vacant Unit Card
+    if (currentFlat.occupancy_type === 'vacant') {
+      return (
+        <div className="bg-white rounded-3xl border border-[#E7E6E1] p-5 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-800">
+                Property Portfolio · Vacant Unit
+              </span>
+            </div>
+            <span className="text-[11px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-lg border border-amber-200">
+              {currentFlat.block_name || 'Tower A'} · Flat {currentFlat.flat_number}
+            </span>
+          </div>
+          <p className="text-xs text-[#808683]">
+            This unit is unoccupied. Pre-approvals or daily domestic staff are inactive for this unit.
+          </p>
+          <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-center justify-between">
+            <span className="text-xs font-medium text-amber-900">Maintenance: ₹{currentFlat.maintenance_amount || 3500}/mo</span>
+            <span className="text-xs font-bold text-emerald-700">Paid</span>
+          </div>
+        </div>
+      );
+    }
+
+    // 3. For Occupants (Tenants living here, or Owner living in self-occupied home):
+    // If a visitor is actively waiting at the gate:
     if (activeWaitingVisitor) {
       return (
         <div className="bg-[#FFFDF9] rounded-3xl border border-[#F0DEC8] shadow-xs p-5 space-y-3.5 animate-in fade-in">
@@ -144,12 +265,12 @@ export default function ResidentHomePage() {
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#D39B50] animate-pulse" />
               <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#AD7D3E]">
-                At Your Gate {currentFlat.occupancy_type === 'rented' ? '· Rented Unit' : ''}
+                At Your Gate {isTenantOfThisFlat ? '· Tenant Occupant' : ''}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-lg border border-amber-200">
-                {currentFlat.block_name || 'Tower C'} · Flat {currentFlat.flat_number}
+                {currentFlat.block_name || 'Tower A'} · Flat {currentFlat.flat_number}
               </span>
               <Home className="w-4 h-4 text-[#AD7D3E]" />
             </div>
@@ -159,9 +280,9 @@ export default function ResidentHomePage() {
             <h3 className="text-base font-extrabold text-[#142E31] tracking-tight">
               Someone&apos;s here for you
             </h3>
-            {currentFlat.occupancy_type === 'rented' && (
+            {isTenantOfThisFlat && (
               <p className="text-[11px] text-[#808683] mt-0.5">
-                Tenant: <strong className="text-slate-800">{currentFlat.tenant_name || 'Active Tenant'}</strong> · Landlord & Resident Gate Authorization
+                Logged in as Tenant: <strong className="text-slate-800">{currentUser.full_name}</strong>
               </p>
             )}
           </div>
@@ -221,7 +342,7 @@ export default function ResidentHomePage() {
               </button>
             </div>
 
-            {/* Ask Guard to Call option (Escalation chain) */}
+            {/* Ask Guard to Call option */}
             <div className="pt-1">
               {activeWaitingVisitor.call_requested ? (
                 <div className="w-full p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-center text-[11px] font-bold text-amber-800 flex items-center justify-center gap-1.5">
@@ -255,105 +376,7 @@ export default function ResidentHomePage() {
       );
     }
 
-    // 2. If flat is rented out and NO visitor is waiting, show Landlord Asset Slide
-    if (currentFlat.occupancy_type === 'rented') {
-      return (
-        <div className="bg-white rounded-3xl border border-[#E7E6E1] p-5 space-y-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-900">
-                Landlord Mode · Rented Property
-              </span>
-            </div>
-            <span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border border-blue-100">
-              {currentFlat.block_name || 'Tower A'} · Flat {currentFlat.flat_number}
-            </span>
-          </div>
-
-          <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-1.5">
-            <div className="text-xs font-bold text-blue-950 flex items-center justify-between">
-              <span>Active Tenant:</span>
-              <span className="text-emerald-700 font-extrabold text-[11px]">Lease Active</span>
-            </div>
-            <div className="text-base font-black text-[#142E31]">
-              {currentFlat.tenant_name || 'Rohan Verma'}
-            </div>
-            <div className="text-xs text-[#808683] flex items-center gap-2 flex-wrap">
-              <span>Phone: {currentFlat.tenant_phone || '+91 98222 33445'}</span>
-              <span>•</span>
-              <span>Lease valid till {currentFlat.lease_end_date || '31 Oct 2027'}</span>
-            </div>
-            <p className="text-[11px] text-[#808683] pt-1">
-              🔒 Daily visitor gate approvals and delivery OTPs route directly to the tenant for privacy. Landlords can override or pre-approve anytime.
-            </p>
-          </div>
-
-          {/* Financials & Maintenance Overview */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="p-3 bg-[#F6F5F2] rounded-2xl border border-[#E7E6E1]">
-              <div className="text-[11px] text-[#808683] font-medium">Monthly Rental Income</div>
-              <div className="text-base font-black text-[#142E31] mt-0.5">
-                ₹{currentFlat.monthly_rent?.toLocaleString('en-IN') || '42,000'}/mo
-              </div>
-              <div className="text-[10px] text-emerald-700 font-semibold mt-1">Paid on 1st of month</div>
-            </div>
-
-            <div className="p-3 bg-[#F6F5F2] rounded-2xl border border-[#E7E6E1]">
-              <div className="text-[11px] text-[#808683] font-medium">Society Maintenance</div>
-              <div className="text-base font-black text-emerald-800 mt-0.5">
-                ₹{currentFlat.maintenance_amount || 4200}/mo
-              </div>
-              <div className="text-[10px] text-emerald-700 font-semibold mt-1">Status: Paid (Up-to-date)</div>
-            </div>
-          </div>
-
-          {/* Landlord Actions */}
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => alert(`Connecting with tenant ${currentFlat.tenant_name} (${currentFlat.tenant_phone})...`)}
-              className="flex-1 py-2.5 bg-[#142E31] hover:bg-black text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-            >
-              Contact Tenant
-            </button>
-            <button
-              onClick={() => alert(`Maintenance Receipt #PM-${currentFlat.flat_number}-2026 generated and sent to email.`)}
-              className="flex-1 py-2.5 bg-[#F6F5F2] hover:bg-[#EAE6DE] text-[#142E31] text-xs font-bold rounded-xl transition-colors cursor-pointer border border-[#E7E6E1]"
-            >
-              Society Receipt
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    // 3. If flat is vacant and NO visitor is waiting, show Vacant Unit Card
-    if (currentFlat.occupancy_type === 'vacant') {
-      return (
-        <div className="bg-white rounded-3xl border border-[#E7E6E1] p-5 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-800">
-                Property Portfolio · Vacant Unit
-              </span>
-            </div>
-            <span className="text-[11px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-lg border border-amber-200">
-              {currentFlat.block_name || 'Tower A'} · Flat {currentFlat.flat_number}
-            </span>
-          </div>
-          <p className="text-xs text-[#808683]">
-            This unit is currently unoccupied. No gate approvals or daily staff are active for this flat.
-          </p>
-          <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-center justify-between">
-            <span className="text-xs font-medium text-amber-900">Maintenance: ₹{currentFlat.maintenance_amount || 3500}/mo</span>
-            <span className="text-xs font-bold text-emerald-700">Paid</span>
-          </div>
-        </div>
-      );
-    }
-
-    // 4. When NO visitors are waiting, render the clean All-Clear Card!
+    // 4. Clean All-Clear Card
     return renderAllClearCard();
   };
 
@@ -552,56 +575,85 @@ export default function ResidentHomePage() {
                     Visitor updates
                   </h3>
                   <p className="text-[11px] text-[#808683] mt-0.5">
-                    A little peace of mind, in real time.
+                    {isLandlordViewingRentedFlat ? 'Protected by DPDP Privacy Standards.' : 'A little peace of mind, in real time.'}
                   </p>
                 </div>
-                <Link
-                  href="/resident/passes"
-                  className="text-xs font-bold text-[#E05D44] hover:underline flex items-center gap-1"
-                >
-                  <span>View all</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                {!isLandlordViewingRentedFlat && (
+                  <Link
+                    href="/resident/passes"
+                    className="text-xs font-bold text-[#E05D44] hover:underline flex items-center gap-1"
+                  >
+                    <span>View all</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                )}
               </div>
 
-              <div className="divide-y divide-[#E7E6E1]">
-                {recentVisits.length > 0 ? (
-                  recentVisits.map((v) => (
-                    <Link
-                      key={v.id}
-                      href={`/resident/visitors/${v.id}`}
-                      className="py-3 flex items-center justify-between hover:bg-slate-50/60 rounded-xl px-1.5 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#F6F5F2] flex items-center justify-center text-[#142E31]">
-                          {v.category === 'cab' ? <Car className="w-5 h-5" /> :
-                           v.category === 'service' ? <Wrench className="w-5 h-5" /> :
-                           v.category === 'guest' ? <User className="w-5 h-5" /> :
-                           <Package className="w-5 h-5" />}
+              {isLandlordViewingRentedFlat ? (
+                <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 text-center space-y-2">
+                  <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center mx-auto">
+                    <ShieldCheck className="w-5 h-5 text-blue-700" />
+                  </div>
+                  <h4 className="text-xs font-extrabold text-slate-800">Tenant Personal Log Hidden</h4>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto leading-relaxed">
+                    Personal visitor arrivals and food/courier deliveries for Flat {currentFlat.flat_number} are confidential to tenant <strong>{currentFlat.tenant_name}</strong> under the DPDP Act.
+                  </p>
+                  <button
+                    onClick={() => alert(`Contacting tenant ${currentFlat.tenant_name} at ${currentFlat.tenant_phone}...`)}
+                    className="mt-1 px-3 py-1.5 bg-[#142E31] text-white text-xs font-bold rounded-xl hover:bg-black transition-colors"
+                  >
+                    Contact Tenant
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#E7E6E1]">
+                  {recentVisits.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-[#808683]">
+                      No recent visitors recorded for this unit.
+                    </div>
+                  ) : (
+                    recentVisits.map((v) => (
+                      <div key={v.id} className="py-3 flex items-center justify-between first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#F6F5F2] text-[#142E31] flex items-center justify-center">
+                            {v.category === 'cab' ? (
+                              <Car className="w-4 h-4" />
+                            ) : v.category === 'service' ? (
+                              <Wrench className="w-4 h-4" />
+                            ) : v.category === 'guest' ? (
+                              <User className="w-4 h-4" />
+                            ) : (
+                              <Package className="w-4 h-4" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-[#142E31]">
+                              {v.visitor_name}
+                            </div>
+                            <div className="text-[10px] text-[#808683]">
+                              {v.delivery_company || v.category}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-xs font-bold text-[#142E31]">{v.visitor_name}</div>
-                          <div className="text-[11px] text-[#808683]">{v.delivery_company || v.category}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          v.status === 'checked_in' ? 'bg-[#E5F3EB] text-[#44816A]' :
-                          v.status === 'approved' ? 'bg-blue-50 text-blue-700' :
-                          v.status === 'pending' ? 'bg-[#FFF8C2] text-[#B45309]' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            v.status === 'checked_in'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : v.status === 'approved'
+                              ? 'bg-blue-50 text-blue-700'
+                              : v.status === 'rejected'
+                              ? 'bg-red-50 text-red-700'
+                              : 'bg-amber-50 text-amber-700'
+                          }`}
+                        >
                           {v.status === 'checked_in' ? 'Inside' : v.status}
                         </span>
                       </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="py-4 text-center text-xs text-[#808683]">
-                    No visitors yet today.
-                  </div>
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* AROUND YOUR COMMUNITY CARD with community.jpg */}

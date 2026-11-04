@@ -92,6 +92,7 @@ export interface UserProfile {
   email: string;
   phone: string;
   role: UserRole;
+  resident_type?: 'owner' | 'tenant' | 'family';
   avatar_url?: string;
   flat_id?: string;
   flat_display?: string;

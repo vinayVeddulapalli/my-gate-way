@@ -93,38 +93,99 @@ export const Header: React.FC = () => {
         <p className="text-xs text-slate-500">1-click switch between all roles</p>
       </div>
 
-      <div className="max-h-72 overflow-y-auto py-1">
-        {state.users.map((user) => (
+      <div className="max-h-80 overflow-y-auto py-1 divide-y divide-slate-100 text-xs">
+        {/* Security Gate */}
+        <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+          Security Gate Terminal
+        </div>
+        {state.users.filter(u => u.role === 'security_guard').map(user => (
           <button
             key={user.id}
             onClick={() => handleRoleSwitch(user.id)}
-            className={`w-full px-3 py-2.5 text-left flex items-start gap-3 hover:bg-slate-50 transition-colors ${state.currentUser.id === user.id ? 'bg-orange-50/70 text-[#E05D44]' : ''
-              }`}
+            className={`w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-slate-50 transition-colors ${state.currentUser.id === user.id ? 'bg-emerald-50/70 text-emerald-900 font-bold' : ''}`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${user.role === 'security_guard' ? 'bg-blue-600 text-white' :
-                user.role === 'resident' ? 'bg-[#FDEEEB] text-[#E05D44] font-black' :
-                  user.role === 'family_member' ? 'bg-purple-600 text-white' :
-                    user.role === 'community_admin' ? 'bg-slate-800 text-white' :
-                      'bg-amber-600 text-white'
-              }`}>
-              {user.role === 'resident' ? 'AS' : user.full_name.charAt(0)}
+            <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+              RK
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900 truncate">{user.full_name}</span>
-                {state.currentUser.id === user.id && (
-                  <span className="text-[10px] bg-[#E05D44] text-white px-1.5 py-0.2 rounded font-semibold">Active</span>
-                )}
+                <span className="font-bold text-slate-900 truncate">{user.full_name}</span>
+                {state.currentUser.id === user.id && <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded-full font-bold">Active</span>}
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">{getRoleDisplayName(user.role)}</p>
-              {user.flat_display && (
-                <p className="text-[10px] text-slate-400 truncate">{user.flat_display}</p>
-              )}
+              <p className="text-[10px] text-slate-500">Security Guard • Gate 1 Kiosk</p>
+            </div>
+          </button>
+        ))}
+
+        {/* Flat Owners / Landlords */}
+        <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+          Property Owners (Landlords)
+        </div>
+        {state.users.filter(u => u.role === 'resident' && u.resident_type === 'owner').map(user => (
+          <button
+            key={user.id}
+            onClick={() => handleRoleSwitch(user.id)}
+            className={`w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-slate-50 transition-colors ${state.currentUser.id === user.id ? 'bg-orange-50/70 text-[#E05D44] font-bold' : ''}`}
+          >
+            <div className="w-7 h-7 rounded-full bg-[#FDEEEB] text-[#E05D44] flex items-center justify-center text-[10px] font-bold shrink-0">
+              {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 truncate">{user.full_name}</span>
+                {state.currentUser.id === user.id && <span className="text-[9px] bg-[#E05D44] text-white px-1.5 py-0.5 rounded-full font-bold">Active</span>}
+              </div>
+              <p className="text-[10px] text-slate-500">{user.flat_display || 'Flat Owner'}</p>
+            </div>
+          </button>
+        ))}
+
+        {/* Renters / Tenants */}
+        <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+          Renters / Tenants (Occupants)
+        </div>
+        {state.users.filter(u => u.role === 'resident' && u.resident_type === 'tenant').map(user => (
+          <button
+            key={user.id}
+            onClick={() => handleRoleSwitch(user.id)}
+            className={`w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-slate-50 transition-colors ${state.currentUser.id === user.id ? 'bg-blue-50/70 text-blue-900 font-bold' : ''}`}
+          >
+            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+              {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 truncate">{user.full_name}</span>
+                {state.currentUser.id === user.id && <span className="text-[9px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full font-bold">Active</span>}
+              </div>
+              <p className="text-[10px] text-blue-700 font-medium">{user.flat_display || 'Tenant'}</p>
+            </div>
+          </button>
+        ))}
+
+        {/* Administration */}
+        <div className="px-3 py-1.5 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+          Society Admin
+        </div>
+        {state.users.filter(u => u.role === 'community_admin' || u.role === 'super_admin').map(user => (
+          <button
+            key={user.id}
+            onClick={() => handleRoleSwitch(user.id)}
+            className={`w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-slate-50 transition-colors ${state.currentUser.id === user.id ? 'bg-slate-100 text-slate-900 font-bold' : ''}`}
+          >
+            <div className="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+              {user.role === 'super_admin' ? 'SA' : 'AD'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 truncate">{user.full_name}</span>
+                {state.currentUser.id === user.id && <span className="text-[9px] bg-slate-800 text-white px-1.5 py-0.5 rounded-full font-bold">Active</span>}
+              </div>
+              <p className="text-[10px] text-slate-500">{user.role === 'super_admin' ? 'Super Administrator' : 'Community Admin'}</p>
             </div>
           </button>
         ))}
       </div>
-
       <div className="p-2 border-t border-slate-100 bg-slate-50/60 space-y-1">
         <Link
           href="/login"

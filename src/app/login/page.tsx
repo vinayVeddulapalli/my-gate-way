@@ -183,8 +183,14 @@ function LoginForm() {
   };
 
   const handleQuickSignInResident = () => {
-    const residentUser = state.users.find(u => u.role === 'resident') || state.users[1];
-    appStore.switchActiveUser(residentUser.id);
+    const ownerUser = state.users.find(u => u.role === 'resident' && u.resident_type === 'owner') || state.users[1];
+    appStore.switchActiveUser(ownerUser.id);
+    router.push('/resident');
+  };
+
+  const handleQuickSignInTenant = (tenantEmail?: string) => {
+    const tenantUser = state.users.find(u => tenantEmail ? u.email === tenantEmail : (u.role === 'resident' && u.resident_type === 'tenant')) || state.users[3];
+    appStore.switchActiveUser(tenantUser.id);
     router.push('/resident');
   };
 
