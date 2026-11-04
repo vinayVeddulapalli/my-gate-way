@@ -33,7 +33,7 @@ BEGIN
     );
     DELETE FROM auth.users WHERE lower(email) = lower(p_email) AND id <> p_user_id;
 
-    -- 1. Insert or update in auth.users
+    -- 1. Insert or update in auth.users with empty string tokens (prevents GoTrue NULL scan error)
     INSERT INTO auth.users (
         instance_id,
         id,
@@ -47,7 +47,14 @@ BEGIN
         raw_user_meta_data,
         is_super_admin,
         created_at,
-        updated_at
+        updated_at,
+        confirmation_token,
+        recovery_token,
+        email_change,
+        email_change_token_new,
+        phone,
+        phone_change,
+        phone_change_token
     ) VALUES (
         '00000000-0000-0000-0000-000000000000',
         p_user_id,
@@ -61,13 +68,24 @@ BEGIN
         json_build_object('full_name', p_full_name, 'phone', p_phone, 'role', p_role)::jsonb,
         CASE WHEN p_role = 'super_admin' THEN true ELSE false END,
         now(),
-        now()
+        now(),
+        '',
+        '',
+        '',
+        '',
+        p_phone,
+        '',
+        ''
     )
     ON CONFLICT (id) DO UPDATE SET
         email = lower(EXCLUDED.email),
         encrypted_password = EXCLUDED.encrypted_password,
         email_confirmed_at = now(),
         raw_user_meta_data = EXCLUDED.raw_user_meta_data,
+        confirmation_token = COALESCE(auth.users.confirmation_token, ''),
+        recovery_token = COALESCE(auth.users.recovery_token, ''),
+        email_change = COALESCE(auth.users.email_change, ''),
+        email_change_token_new = COALESCE(auth.users.email_change_token_new, ''),
         updated_at = now();
 
     -- 2. Insert or update in auth.identities (casting id to UUID to match newer Supabase schema)
