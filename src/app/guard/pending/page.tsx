@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { appStore, AppState } from '@/lib/store';
@@ -61,6 +61,18 @@ function PendingContent() {
       setActiveRequest(state.visitorRequests[0]);
     }
   }, [requestId, state.visitorRequests]);
+
+  // Audible alert when status transitions live (e.g. resident approves/denies on their phone)
+  const prevStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeRequest) return;
+    if (prevStatusRef.current === 'pending' && activeRequest.status === 'approved') {
+      soundNotifier.playApprovalChime();
+    } else if (prevStatusRef.current === 'pending' && activeRequest.status === 'rejected') {
+      soundNotifier.playRejectionTone();
+    }
+    prevStatusRef.current = activeRequest.status;
+  }, [activeRequest?.status]);
 
   // Countdown timer for pending
   useEffect(() => {

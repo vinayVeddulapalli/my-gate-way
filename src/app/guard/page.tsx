@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { appStore, AppState } from '@/lib/store';
+import { soundNotifier } from '@/lib/audio';
 import { 
   UserPlus, 
   QrCode, 
@@ -73,6 +74,15 @@ export default function GuardDashboardPage() {
   const parcelsAtGate = requests.filter(r => r.status === 'leave_at_gate' || r.handover_status === 'at_gate');
   const approvedWaitingEntry = requests.filter(r => r.status === 'approved');
   const rejectedRequests = requests.filter(r => r.status === 'rejected');
+
+  // Audible chime when a new approval comes in from a resident
+  const prevApprovedCountRef = useRef(approvedWaitingEntry.length);
+  useEffect(() => {
+    if (approvedWaitingEntry.length > prevApprovedCountRef.current) {
+      soundNotifier.playApprovalChime();
+    }
+    prevApprovedCountRef.current = approvedWaitingEntry.length;
+  }, [approvedWaitingEntry.length]);
 
   // Filtered history list
   const filteredHistory = requests.filter(r => {
