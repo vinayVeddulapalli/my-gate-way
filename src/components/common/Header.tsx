@@ -77,7 +77,10 @@ export const Header: React.FC = () => {
     }
   };
 
-  const isResidentRoute = pathname.startsWith('/resident');
+    const isResidentRoute = pathname.startsWith('/resident');
+  const isGuardRoute = pathname.startsWith('/guard');
+  const guardDutyUser = state.users.find(u => u.role === 'security_guard') || state.currentUser;
+  const activeHeaderUser = isGuardRoute ? guardDutyUser : state.currentUser;
   const currentFlat = state.flats.find(f => f.id === state.currentUser.flat_id) || state.flats[0];
   const pendingRequestsCount = state.visitorRequests.filter(
     r => r.flat_id === currentFlat?.id && r.status === 'pending'
@@ -349,14 +352,14 @@ export const Header: React.FC = () => {
                     className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors cursor-pointer"
                   >
                     <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold" suppressHydrationWarning>
-                      {state.currentUser.full_name.charAt(0)}
+                      {activeHeaderUser.full_name.charAt(0)}
                     </div>
                     <div className="hidden md:block" suppressHydrationWarning>
                       <div className="text-xs font-bold text-white leading-tight truncate max-w-[120px]">
-                        {state.currentUser.full_name}
+                        {activeHeaderUser.full_name}
                       </div>
                       <div className="text-[10px] text-emerald-400 font-medium leading-tight">
-                        {getRoleDisplayName(state.currentUser.role)}
+                        {getRoleDisplayName(activeHeaderUser.role)}
                       </div>
                     </div>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />

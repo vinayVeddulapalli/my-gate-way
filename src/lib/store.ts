@@ -368,8 +368,28 @@ const defaultUsers: UserProfile[] = [
     role: 'resident',
     flat_id: defaultFlats[4].id,
     flat_display: 'Tower A - Aster / Flat 102',
+    owned_flat_ids: [
+      defaultFlats[4].id,
+      'd0000000-0000-0000-0000-000000000801',
+      defaultFlats[0].id
+    ],
     notification_push_enabled: true,
     notification_sms_enabled: false,
+    notification_sound_enabled: true,
+    is_active: true
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000007',
+    community_id: defaultCommunity.id,
+    full_name: 'Kishore Reddy',
+    email: 'kishore.reddy@palmmeadows.in',
+    phone: '+91 97444 55667',
+    role: 'resident',
+    flat_id: 'd0000000-0000-0000-0000-000000000801',
+    flat_display: 'Tower C · Floor 8 · Flat 801',
+    owned_flat_ids: ['d0000000-0000-0000-0000-000000000801'],
+    notification_push_enabled: true,
+    notification_sms_enabled: true,
     notification_sound_enabled: true,
     is_active: true
   }

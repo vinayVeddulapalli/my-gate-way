@@ -506,39 +506,19 @@ function PendingContent() {
             )}
           </div>
 
-          {/* Quick Demo Simulator Helper */}
+          {/* Live Handshake Status Box for Guard (Waiting for Resident) */}
           {activeRequest.status === 'pending' && (
-            <div className="p-3.5 bg-emerald-50/70 border border-dashed border-emerald-300 rounded-2xl space-y-2 text-center">
-              <div className="text-[11px] font-bold text-emerald-900 flex items-center justify-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Quick Evaluation Testing Bar</span>
+            <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-900 animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                <div>
+                  <span className="font-bold block">Live Gate Handshake Active</span>
+                  <span className="text-[11px] text-amber-700">Notification sent to resident device. Waiting for resident to approve...</span>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-600">
-                You can switch to the Resident tab in the top header, or click below to simulate immediate resident response:
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleSimulatedApprove}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-xs cursor-pointer"
-                >
-                  Simulate: APPROVE
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSimulatedLeaveAtGate}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-xs cursor-pointer"
-                >
-                  Simulate: LEAVE AT GATE
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSimulatedReject}
-                  className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow-xs cursor-pointer"
-                >
-                  Simulate: REJECT
-                </button>
-              </div>
+              <span className="text-[10px] font-mono font-bold bg-amber-200/80 text-amber-900 px-2.5 py-1 rounded-lg shrink-0">
+                Listening Live
+              </span>
             </div>
           )}
         </div>
