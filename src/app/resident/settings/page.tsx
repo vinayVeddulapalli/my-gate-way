@@ -116,15 +116,15 @@ export default function ResidentProfileSettingsPage() {
       {/* Card 1: Resident Profile Card */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] p-6 text-center flex flex-col items-center">
         <div className="w-20 h-20 rounded-full bg-[#FDEEEB] text-[#E05D44] text-2xl font-black flex items-center justify-center mb-3.5 shadow-xs">
-          AS
+          {currentUser.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() || 'R'}
         </div>
 
         <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-          {currentUser.role === 'resident' ? currentUser.full_name : 'Aarav Sharma'}
+          {currentUser.full_name || 'Resident Owner'}
         </h2>
 
         <p className="text-xs text-slate-500 mt-1">
-          Resident • Owner
+          {currentUser.role === 'resident' ? (currentUser.resident_type === 'tenant' ? 'Resident • Tenant' : 'Resident • Owner') : currentUser.role.replace('_', ' ')}
         </p>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full mt-3.5 border border-emerald-100">

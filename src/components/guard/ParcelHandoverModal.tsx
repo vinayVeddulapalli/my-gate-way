@@ -202,7 +202,7 @@ export const ParcelHandoverModal: React.FC<ParcelHandoverModalProps> = ({
                     setCollectorName(e.target.value);
                     if (error) setError(null);
                   }}
-                  placeholder="e.g. Ananya Sharma (Owner) or Shanti (House Help)"
+                  placeholder="e.g. Resident Owner or House Staff"
                   className="w-full pl-10 pr-4 py-2.5 text-xs font-medium text-slate-900 border border-slate-300 rounded-xl focus:outline-hidden focus:border-indigo-600"
                 />
               </div>

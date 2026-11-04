@@ -121,7 +121,7 @@ export default function ResidentMarketplacePage() {
                     description: 'Available for collection within society.',
                     category: 'Furniture',
                     price: 1000,
-                    seller: 'Aarav Sharma (A-1204)',
+                    seller: 'Resident (Verified)',
                     image: '/assets/images/chair.jpg',
                     saved: false
                   },

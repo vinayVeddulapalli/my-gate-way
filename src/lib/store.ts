@@ -99,9 +99,8 @@ const defaultFlats: Flat[] = [
     intercom_number: '1204', 
     is_occupied: true, 
     occupancy_type: 'self_occupied', 
-    primary_resident_name: 'Aarav Sharma', 
-    primary_resident_phone: '+91 98111 22334', 
-    owner_name: 'Aarav Sharma',
+    primary_resident_name: 'Resident Owner', 
+    owner_name: 'Resident Owner',
     maintenance_amount: 4200, 
     maintenance_status: 'paid' 
   },
@@ -113,15 +112,8 @@ const defaultFlats: Flat[] = [
     flat_number: '1205', 
     floor_number: 12, 
     intercom_number: '1205', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Rohan Verma', 
-    primary_resident_phone: '+91 98222 33445', 
-    tenant_name: 'Rohan Verma', 
-    tenant_phone: '+91 98222 33445', 
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '31 Oct 2027', 
-    monthly_rent: 42000, 
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
     maintenance_amount: 4200, 
     maintenance_status: 'paid' 
   },
@@ -133,15 +125,8 @@ const defaultFlats: Flat[] = [
     flat_number: '1206', 
     floor_number: 12, 
     intercom_number: '1206', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Pooja Hegde', 
-    primary_resident_phone: '+91 97333 44556', 
-    tenant_name: 'Pooja Hegde', 
-    tenant_phone: '+91 97333 44556', 
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '15 Mar 2028', 
-    monthly_rent: 45000, 
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
     maintenance_amount: 4200, 
     maintenance_status: 'paid' 
   },
@@ -153,17 +138,10 @@ const defaultFlats: Flat[] = [
     flat_number: '301', 
     floor_number: 3, 
     intercom_number: '1301', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Suresh Patel', 
-    primary_resident_phone: '+91 97333 44556',
-    tenant_name: 'Suresh Patel',
-    tenant_phone: '+91 97333 44556',
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '30 Nov 2026',
-    monthly_rent: 38000,
-    maintenance_amount: 3800,
-    maintenance_status: 'paid'
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    maintenance_amount: 3800, 
+    maintenance_status: 'paid' 
   },
   { 
     id: 'd0000000-0000-0000-0000-000000000402', 
@@ -173,17 +151,10 @@ const defaultFlats: Flat[] = [
     flat_number: '402', 
     floor_number: 4, 
     intercom_number: '2402', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Ananya Sharma', 
-    primary_resident_phone: '+91 98111 22334',
-    tenant_name: 'Ananya Sharma',
-    tenant_phone: '+91 98111 22334',
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '15 Jan 2027',
-    monthly_rent: 40000,
-    maintenance_amount: 4000,
-    maintenance_status: 'paid'
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    maintenance_amount: 4000, 
+    maintenance_status: 'paid' 
   },
   { 
     id: 'd0000000-0000-0000-0000-000000000403', 
@@ -193,17 +164,10 @@ const defaultFlats: Flat[] = [
     flat_number: '403', 
     floor_number: 4, 
     intercom_number: '2403', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Vikram Singh', 
-    primary_resident_phone: '+91 98222 33445',
-    tenant_name: 'Vikram Singh',
-    tenant_phone: '+91 98222 33445',
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '28 Feb 2027',
-    monthly_rent: 39000,
-    maintenance_amount: 3900,
-    maintenance_status: 'paid'
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    maintenance_amount: 3900, 
+    maintenance_status: 'paid' 
   },
   { 
     id: 'd0000000-0000-0000-0000-000000000701', 
@@ -213,17 +177,10 @@ const defaultFlats: Flat[] = [
     flat_number: '701', 
     floor_number: 7, 
     intercom_number: '2701', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Meera Krishnan', 
-    primary_resident_phone: '+91 98333 44556',
-    tenant_name: 'Meera Krishnan',
-    tenant_phone: '+91 98333 44556',
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '31 Aug 2027',
-    monthly_rent: 44000,
-    maintenance_amount: 4400,
-    maintenance_status: 'paid'
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    maintenance_amount: 4400, 
+    maintenance_status: 'paid' 
   },
   { 
     id: 'd0000000-0000-0000-0000-000000001102', 
@@ -233,17 +190,10 @@ const defaultFlats: Flat[] = [
     flat_number: '1102', 
     floor_number: 11, 
     intercom_number: '3102', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Sunil Joshi', 
-    primary_resident_phone: '+91 98444 55667',
-    tenant_name: 'Sunil Joshi',
-    tenant_phone: '+91 98444 55667',
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '30 Sep 2027',
-    monthly_rent: 48000,
-    maintenance_amount: 4800,
-    maintenance_status: 'paid'
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    maintenance_amount: 4800, 
+    maintenance_status: 'paid' 
   },
   { 
     id: 'd0000000-0000-0000-0000-000000000102', 
@@ -255,8 +205,6 @@ const defaultFlats: Flat[] = [
     intercom_number: '1102', 
     is_occupied: false, 
     occupancy_type: 'vacant', 
-    primary_resident_name: 'Aarav Sharma (Vacant)', 
-    owner_name: 'Aarav Sharma',
     maintenance_amount: 3500, 
     maintenance_status: 'paid' 
   },
@@ -268,17 +216,10 @@ const defaultFlats: Flat[] = [
     flat_number: '801', 
     floor_number: 8, 
     intercom_number: '3801', 
-    is_occupied: true, 
-    occupancy_type: 'rented', 
-    primary_resident_name: 'Kishore Reddy', 
-    primary_resident_phone: '+91 97444 55667',
-    tenant_name: 'Kishore Reddy',
-    tenant_phone: '+91 97444 55667',
-    owner_name: 'Aarav Sharma',
-    lease_end_date: '31 Dec 2027',
-    monthly_rent: 52000,
-    maintenance_amount: 5200,
-    maintenance_status: 'paid'
+    is_occupied: false, 
+    occupancy_type: 'vacant', 
+    maintenance_amount: 5200, 
+    maintenance_status: 'paid' 
   }
 ];
 
@@ -286,7 +227,7 @@ const defaultUsers: UserProfile[] = [
   {
     id: 'e0000000-0000-0000-0000-000000000003',
     community_id: defaultCommunity.id,
-    full_name: 'Ramesh Kumar',
+    full_name: 'Security Officer',
     email: 'guard@gatewaysecurity.in',
     phone: '+91 98765 43210',
     role: 'security_guard',
@@ -298,146 +239,25 @@ const defaultUsers: UserProfile[] = [
   {
     id: 'e0000000-0000-0000-0000-000000000004',
     community_id: defaultCommunity.id,
-    full_name: 'Aarav Sharma',
+    full_name: 'Resident Owner',
     email: 'owner@gatewaysecurity.in',
     phone: '+91 98111 22334',
     role: 'resident',
     resident_type: 'owner',
     flat_id: defaultFlats[0].id,
-    flat_display: 'Tower A • Floor 12 • Flat 1204 (Owner)',
+    flat_display: 'Tower A • Floor 12 • Flat 1204',
     owned_flat_ids: [
-      'd0000000-0000-0000-0000-000000001204',
-      'd0000000-0000-0000-0000-000000001205',
-      'd0000000-0000-0000-0000-000000001206',
-      'd0000000-0000-0000-0000-000000000301',
-      'd0000000-0000-0000-0000-000000000402',
-      'd0000000-0000-0000-0000-000000000403',
-      'd0000000-0000-0000-0000-000000000701',
-      'd0000000-0000-0000-0000-000000001102',
-      'd0000000-0000-0000-0000-000000000102',
-      'd0000000-0000-0000-0000-000000000801'
+      'd0000000-0000-0000-0000-000000001204'
     ],
     notification_push_enabled: true,
     notification_sms_enabled: true,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  {
-    id: 'e0000000-0000-0000-0000-000000000006',
-    community_id: defaultCommunity.id,
-    full_name: 'Arun Nair',
-    email: 'arun.nair@outlook.com',
-    phone: '+91 97222 33445',
-    role: 'resident',
-    resident_type: 'owner',
-    flat_id: defaultFlats[8].id,
-    flat_display: 'Tower A • Floor 1 • Flat 102 (Owner)',
-    owned_flat_ids: [
-      defaultFlats[8].id,
-      'd0000000-0000-0000-0000-000000000801',
-      defaultFlats[0].id
-    ],
-    notification_push_enabled: true,
-    notification_sms_enabled: false,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  // --- RENTERS / TENANTS (Dedicated Occupant Profiles) ---
-  {
-    id: 'e0000000-0000-0000-0000-000000000301',
-    community_id: defaultCommunity.id,
-    full_name: 'Suresh Patel',
-    email: 'suresh.patel@palmmeadows.in',
-    phone: '+91 97333 44556',
-    role: 'resident',
-    resident_type: 'tenant',
-    flat_id: 'd0000000-0000-0000-0000-000000000301',
-    flat_display: 'Tower A • Floor 3 • Flat 301 (Tenant)',
-    notification_push_enabled: true,
-    notification_sms_enabled: true,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  {
-    id: 'e0000000-0000-0000-0000-000000000007',
-    community_id: defaultCommunity.id,
-    full_name: 'Kishore Reddy',
-    email: 'kishore.reddy@palmmeadows.in',
-    phone: '+91 97444 55667',
-    role: 'resident',
-    resident_type: 'tenant',
-    flat_id: 'd0000000-0000-0000-0000-000000000801',
-    flat_display: 'Tower C • Floor 8 • Flat 801 (Tenant)',
-    notification_push_enabled: true,
-    notification_sms_enabled: true,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  {
-    id: 'e0000000-0000-0000-0000-000000001205',
-    community_id: defaultCommunity.id,
-    full_name: 'Rohan Verma',
-    email: 'rohan.verma@palmmeadows.in',
-    phone: '+91 98222 33445',
-    role: 'resident',
-    resident_type: 'tenant',
-    flat_id: 'd0000000-0000-0000-0000-000000001205',
-    flat_display: 'Tower A • Floor 12 • Flat 1205 (Tenant)',
-    notification_push_enabled: true,
-    notification_sms_enabled: true,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  {
-    id: 'e0000000-0000-0000-0000-000000001206',
-    community_id: defaultCommunity.id,
-    full_name: 'Pooja Hegde',
-    email: 'pooja.hegde@palmmeadows.in',
-    phone: '+91 97333 44556',
-    role: 'resident',
-    resident_type: 'tenant',
-    flat_id: 'd0000000-0000-0000-0000-000000001206',
-    flat_display: 'Tower A • Floor 12 • Flat 1206 (Tenant)',
-    notification_push_enabled: true,
-    notification_sms_enabled: true,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  {
-    id: 'e0000000-0000-0000-0000-000000000402',
-    community_id: defaultCommunity.id,
-    full_name: 'Ananya Sharma',
-    email: 'ananya.sharma@palmmeadows.in',
-    phone: '+91 98111 22334',
-    role: 'resident',
-    resident_type: 'tenant',
-    flat_id: 'd0000000-0000-0000-0000-000000000402',
-    flat_display: 'Tower B • Floor 4 • Flat 402 (Tenant)',
-    notification_push_enabled: true,
-    notification_sms_enabled: true,
-    notification_sound_enabled: true,
-    is_active: true
-  },
-  // --- ADMINS & FAMILY ---
-  {
-    id: 'e0000000-0000-0000-0000-000000000005',
-    community_id: defaultCommunity.id,
-    full_name: 'Vikram Sharma',
-    email: 'vikram.sharma@gmail.com',
-    phone: '+91 98111 22335',
-    role: 'family_member',
-    resident_type: 'family',
-    flat_id: defaultFlats[0].id,
-    flat_display: 'Tower A • Floor 12 • Flat 1204 (Family)',
-    notification_push_enabled: true,
-    notification_sms_enabled: false,
     notification_sound_enabled: true,
     is_active: true
   },
   {
     id: 'e0000000-0000-0000-0000-000000000002',
     community_id: defaultCommunity.id,
-    full_name: 'Rajesh Iyer',
+    full_name: 'Community Admin',
     email: 'admin@gatewaysecurity.in',
     phone: '+91 98450 12345',
     role: 'community_admin',
@@ -449,7 +269,7 @@ const defaultUsers: UserProfile[] = [
   {
     id: 'e0000000-0000-0000-0000-000000000001',
     community_id: defaultCommunity.id,
-    full_name: 'Dev Administrator',
+    full_name: 'Super Admin',
     email: 'superadmin@gatewaysecurity.in',
     phone: '+91 99000 00001',
     role: 'super_admin',
@@ -460,545 +280,13 @@ const defaultUsers: UserProfile[] = [
   }
 ];
 
-const defaultGuestPasses: GuestPass[] = [
-  {
-    id: 'f0000000-0000-0000-0000-000000000001',
-    community_id: defaultCommunity.id,
-    flat_id: defaultFlats[0].id,
-    flat_number: '402',
-    block_name: 'Tower B - Begonia',
-    created_by: defaultUsers[1].id,
-    guest_name: 'Kavita Deshmukh',
-    guest_phone: '+91 99887 76655',
-    pass_code: '847291',
-    category: 'guest',
-    valid_from: '2026-10-24T05:00:00.000Z',
-    valid_until: '2026-10-25T05:00:00.000Z',
-    max_entries: 2,
-    entries_used: 0,
-    is_active: true,
-    notes: 'Family dinner guest pass',
-    created_at: '2026-10-24T05:00:00.000Z'
-  }
-];
-
-const defaultVisitorRequests: VisitorRequest[] = [
-  // --- REAL LIVE SOCIETY VISITOR RECORDS (Preserved from Supabase) ---
-  {
-    id: '09534460-7aa9-4dd9-9092-7af5f48ea570',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000002',
-    gate_name: 'South Service Gate 2 (Deliveries & Logistics)',
-    flat_id: 'd0000000-0000-0000-0000-000000000301',
-    flat_number: '301',
-    block_name: 'Tower A',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'rathod',
-    visitor_phone: '9876543245',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    category: 'service',
-    purpose: 'Maintenance & repair service',
-    gate_location: 'South Service Gate 2 (Deliveries & Logistics) Parcel Desk',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000003',
-    decision_by_name: 'Ramesh Kumar',
-    decision_at: '2026-11-04T06:47:04.157Z',
-    check_in_time: '2026-11-04T06:47:36.917Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    created_at: '2026-11-04T06:45:40.783Z',
-    updated_at: '2026-11-04T06:47:36.917Z'
-  },
-  {
-    id: '21ea12cd-e726-425b-8ad3-1f5c14b0c4da',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000003',
-    gate_name: 'East Pedestrian Gate 3',
-    flat_id: 'd0000000-0000-0000-0000-000000000801',
-    flat_number: '801',
-    block_name: 'Tower C',
-    guard_id: 'e0000000-0000-0000-0000-000000000006',
-    guard_name: 'Arun Nair',
-    visitor_name: 'sneha',
-    visitor_phone: '7876543456',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    category: 'guest',
-    purpose: 'personal meet',
-    gate_location: 'East Pedestrian Gate 3 Parcel Desk',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000004',
-    decision_by_name: 'Aarav Sharma',
-    decision_at: '2026-11-04T06:44:25.261Z',
-    check_in_time: '2026-11-04T06:44:57.382Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    created_at: '2026-11-04T05:52:46.229Z',
-    updated_at: '2026-11-04T06:44:57.382Z'
-  },
-  {
-    id: '0c7802ce-4b96-45ae-9c23-b33f75327688',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000002',
-    gate_name: 'South Service Gate 2 (Deliveries & Logistics)',
-    flat_id: 'd0000000-0000-0000-0000-000000000701',
-    flat_number: '701',
-    block_name: 'Tower B',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Devaraj',
-    visitor_phone: '7568568965',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    category: 'service',
-    purpose: 'Maintenance & repair service',
-    status: 'rejected',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000004',
-    decision_by_name: 'Aarav Sharma',
-    decision_at: '2026-11-02T10:20:45.722Z',
-    rejection_reason: 'Not expected at home right now.',
-    created_at: '2026-11-02T10:19:51.081Z',
-    updated_at: '2026-11-02T10:20:45.722Z'
-  },
-  {
-    id: '9459006e-908f-4331-8932-84178ee81ac8',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000001',
-    gate_name: 'Main North Gate 1',
-    flat_id: 'd0000000-0000-0000-0000-000000000402',
-    flat_number: '402',
-    block_name: 'Tower B',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    guest_pass_id: '82feaa6a-bb02-41a5-9b4a-3b6d7ea783e5',
-    visitor_name: 'kamesh',
-    visitor_phone: '7660853097',
-    category: 'delivery',
-    purpose: 'Personal visit (4 persons)',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000004',
-    decision_by_name: 'Aarav Sharma',
-    decision_at: '2026-10-31T13:25:04.488Z',
-    check_in_time: '2026-10-31T13:25:41.728Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    created_at: '2026-10-31T13:25:41.728Z',
-    updated_at: '2026-10-31T13:25:41.728Z'
-  },
-  {
-    id: '11111111-2222-4333-8444-555555555555',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000001',
-    gate_name: 'Main North Gate 1',
-    flat_id: 'd0000000-0000-0000-0000-000000000301',
-    flat_number: '301',
-    block_name: 'Tower A',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Cross-Device Test Courier',
-    visitor_phone: '+91 98888 77777',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    category: 'delivery',
-    delivery_company: 'Swiggy',
-    purpose: '[FOOD] Lunch meal delivery',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000004',
-    decision_by_name: 'Aarav Sharma',
-    decision_at: '2026-10-31T11:24:22.954Z',
-    check_in_time: '2026-10-31T12:46:42.396Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    created_at: '2026-10-31T11:24:20.585Z',
-    updated_at: '2026-10-31T12:46:42.396Z'
-  },
-  {
-    id: '00000000-0000-4000-a000-000000000099',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000001',
-    gate_name: 'Main North Gate 1',
-    flat_id: 'd0000000-0000-0000-0000-000000000301',
-    flat_number: '301',
-    block_name: 'Tower A',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Live Sync Test Visitor',
-    visitor_phone: '+91 99999 88888',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    category: 'delivery',
-    delivery_company: 'Swiggy',
-    purpose: 'Test Swiggy Delivery',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000003',
-    decision_by_name: 'Ramesh Kumar',
-    decision_at: '2026-10-31T11:29:38.643Z',
-    check_in_time: '2026-10-31T12:46:44.420Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    created_at: '2026-10-31T11:19:40.967Z',
-    updated_at: '2026-10-31T12:46:44.420Z'
-  },
-  {
-    id: 'cc4e4617-722a-4bb2-ba83-3118bec096dc',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000003',
-    gate_name: 'East Pedestrian Gate 3',
-    flat_id: 'd0000000-0000-0000-0000-000000000301',
-    flat_number: '301',
-    block_name: 'Tower A',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Vinay Veddulapalli',
-    visitor_phone: '7660853096',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-    category: 'guest',
-    purpose: 'guests',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: 'e0000000-0000-0000-0000-000000000004',
-    decision_by_name: 'Aarav Sharma',
-    decision_at: '2026-10-24T09:42:28.919Z',
-    check_in_time: '2026-10-24T09:42:37.819Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    created_at: '2026-10-24T09:41:58.701Z',
-    updated_at: '2026-10-24T09:42:37.819Z'
-  },
-  {
-    id: '984af0cc-4dd1-495d-9600-6c44211b9c74',
-    community_id: defaultCommunity.id,
-    gate_id: 'b0000000-0000-0000-0000-000000000001',
-    gate_name: 'Main North Gate 1',
-    flat_id: 'd0000000-0000-0000-0000-000000000402',
-    flat_number: '402',
-    block_name: 'Tower B',
-    guard_id: 'e0000000-0000-0000-0000-000000000003',
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Live System Test Visitor',
-    visitor_phone: '+91 98765 00000',
-    category: 'guest',
-    purpose: 'Verifying real-time Supabase connection',
-    status: 'checked_out',
-    consent_obtained: true,
-    decision_at: '2026-10-24T09:28:42.185Z',
-    check_in_time: '2026-10-24T10:30:04.417Z',
-    check_out_time: '2026-10-30T09:02:18.533Z',
-    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
-    checked_out_by: 'e0000000-0000-0000-0000-000000000003',
-    supervisor_escalated: true,
-    supervisor_notes: 'nothinh',
-    created_at: '2026-10-24T09:28:32.036Z',
-    updated_at: '2026-11-02T05:41:34.695Z'
-  },
-  // --- ADDITIONAL DEMO VISITOR SEED DATA ---
-  {
-    id: 'f1000000-0000-0000-0000-000000000001',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main Gate',
-    flat_id: defaultFlats[0].id,
-    flat_number: '1204',
-    block_name: 'Tower A',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Rahul Kumar',
-    visitor_phone: '+91 98451 98123',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    category: 'delivery',
-    delivery_category: 'e_commerce',
-    delivery_company: 'Amazon',
-    purpose: 'Amazon parcel delivery for Flat 1204',
-    vehicle_number: 'KA-03-HA-8821',
-    parcel_count: 1,
-    parcel_details: 'Amazon packaging box',
-    gate_location: 'Main Gate Parcel Desk',
-    status: 'pending',
-    consent_obtained: true,
-    created_at: '2026-10-24T06:15:00.000Z',
-    updated_at: '2026-10-24T06:15:00.000Z'
-  },
-  {
-    id: 'f1000000-0000-0000-0000-000000000010',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main North Gate 1',
-    flat_id: defaultFlats[0].id,
-    flat_number: '402',
-    block_name: 'Tower B - Begonia',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Suresh Patil (BlueDart Courier)',
-    visitor_phone: '+91 98452 77112',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
-    category: 'delivery',
-    delivery_category: 'courier',
-    delivery_company: 'BlueDart',
-    purpose: 'Courier AWB #BD8912344 (Fashion delivery)',
-    parcel_count: 1,
-    parcel_details: 'Myntra apparel package • AWB #BD8912344',
-    parcel_photo_path: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=400&q=80',
-    gate_location: 'Gate 1 Parcel Desk, Shelf B-4',
-    handover_status: 'at_gate',
-    collection_otp: '6824',
-    status: 'leave_at_gate',
-    consent_obtained: true,
-    decision_by: defaultUsers[1].id,
-    decision_by_name: 'Ananya Sharma',
-    decision_at: '2026-10-24T06:20:00.000Z',
-    created_at: '2026-10-24T06:05:00.000Z',
-    updated_at: '2026-10-24T06:20:00.000Z'
-  },
-  {
-    id: 'f1000000-0000-0000-0000-000000000011',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main North Gate 1',
-    flat_id: defaultFlats[0].id,
-    flat_number: '402',
-    block_name: 'Tower B - Begonia',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Manoj Kumar (Amazon Delivery)',
-    visitor_phone: '+91 98453 99881',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=400&q=80',
-    category: 'delivery',
-    delivery_category: 'e_commerce',
-    delivery_company: 'Amazon',
-    purpose: 'Amazon prime delivery order #402-881920',
-    parcel_count: 2,
-    parcel_details: 'Electronics cartons (2 packages)',
-    gate_location: 'Gate 1 Parcel Desk',
-    handover_status: 'collected',
-    collection_otp: '3157',
-    status: 'collected',
-    consent_obtained: true,
-    decision_by: defaultUsers[1].id,
-    decision_by_name: 'Ananya Sharma',
-    decision_at: '2026-10-24T04:15:00.000Z',
-    collected_at: '2026-10-24T05:30:00.000Z',
-    collected_by_name: 'Ananya Sharma (Owner)',
-    handover_guard_id: defaultUsers[0].id,
-    handover_guard_name: 'Ramesh Kumar',
-    created_at: '2026-10-24T04:00:00.000Z',
-    updated_at: '2026-10-24T05:30:00.000Z'
-  },
-  {
-    id: 'f1000000-0000-0000-0000-000000000002',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main North Gate 1',
-    flat_id: defaultFlats[2].id,
-    flat_number: '701',
-    block_name: 'Tower B - Begonia',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Karthik Selvan',
-    visitor_phone: '+91 99123 44889',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-    category: 'service',
-    purpose: 'Urban Company Split AC Servicing',
-    status: 'checked_in',
-    consent_obtained: true,
-    decision_by: defaultUsers[1].id,
-    decision_by_name: 'Meera Krishnan',
-    decision_at: '2026-10-24T05:40:00.000Z',
-    check_in_time: '2026-10-24T05:42:00.000Z',
-    checked_in_by: defaultUsers[0].id,
-    created_at: '2026-10-24T05:38:00.000Z',
-    updated_at: '2026-10-24T05:42:00.000Z'
-  },
-  {
-    id: 'f1000000-0000-0000-0000-000000000003',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main North Gate 1',
-    flat_id: defaultFlats[0].id,
-    flat_number: '402',
-    block_name: 'Tower B - Begonia',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Sunita Rao',
-    visitor_phone: '+91 97412 33110',
-    visitor_photo_path: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-    category: 'guest',
-    purpose: 'Personal guest visit',
-    status: 'checked_out',
-    consent_obtained: true,
-    decision_by: defaultUsers[1].id,
-    decision_by_name: 'Ananya Sharma',
-    decision_at: '2026-10-24T04:00:00.000Z',
-    check_in_time: '2026-10-24T04:02:00.000Z',
-    check_out_time: '2026-10-24T05:00:00.000Z',
-    checked_in_by: defaultUsers[0].id,
-    checked_out_by: defaultUsers[0].id,
-    created_at: '2026-10-24T03:58:00.000Z',
-    updated_at: '2026-10-24T05:00:00.000Z'
-  },
-  {
-    id: 'f1000000-0000-0000-0000-000000000004',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main North Gate 1',
-    flat_id: defaultFlats[4].id,
-    flat_number: '102',
-    block_name: 'Tower A - Aster',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar',
-    visitor_name: 'Unverified Sales Rep',
-    visitor_phone: '+91 91234 56789',
-    category: 'service',
-    purpose: 'Door to door water purifier promotion',
-    status: 'rejected',
-    consent_obtained: true,
-    decision_by: defaultUsers[4].id,
-    decision_by_name: 'Arun Nair',
-    decision_at: '2026-10-24T03:00:00.000Z',
-    rejection_reason: 'Unsolicited salesperson, strictly denied entry',
-    created_at: '2026-10-24T02:55:00.000Z',
-    updated_at: '2026-10-24T03:00:00.000Z'
-  }
-];
-
-const defaultAuditLogs: AuditLog[] = [
-  {
-    id: 'f2000000-0000-0000-0000-000000000001',
-    community_id: defaultCommunity.id,
-    actor_id: defaultUsers[0].id,
-    actor_name: 'Ramesh Kumar',
-    actor_role: 'security_guard',
-    action: 'REGISTER_VISITOR',
-    entity_type: 'visitor_requests',
-    entity_id: 'f1000000-0000-0000-0000-000000000001',
-    metadata: { visitor: 'Mohammed Faisal', category: 'delivery', flat: 'B-402' },
-    created_at: '2026-10-24T06:15:00.000Z'
-  },
-  {
-    id: 'f2000000-0000-0000-0000-000000000002',
-    community_id: defaultCommunity.id,
-    actor_id: defaultUsers[0].id,
-    actor_name: 'Ramesh Kumar',
-    actor_role: 'security_guard',
-    action: 'CHECK_IN',
-    entity_type: 'visitor_requests',
-    entity_id: 'f1000000-0000-0000-0000-000000000002',
-    metadata: { visitor: 'Karthik Selvan', flat: 'B-701' },
-    created_at: '2026-10-24T05:42:00.000Z'
-  }
-];
-
-const defaultDailyHelpers: DailyHelper[] = [
-  {
-    id: 'h0000000-0000-0000-0000-000000000001',
-    community_id: defaultCommunity.id,
-    name: 'Sunita Devi',
-    phone: '+91 98765 11223',
-    category: 'maid',
-    pass_code: '1001',
-    assigned_flat_ids: [defaultFlats[0].id, defaultFlats[1].id], // Flat 402, 403
-    is_active: true,
-    is_inside: true,
-    current_check_in_time: '2026-10-30T08:15:00.000Z',
-    created_at: '2026-10-24T05:00:00.000Z'
-  },
-  {
-    id: 'h0000000-0000-0000-0000-000000000002',
-    community_id: defaultCommunity.id,
-    name: 'Ramesh Yadav',
-    phone: '+91 98765 22334',
-    category: 'driver',
-    pass_code: '1002',
-    assigned_flat_ids: [defaultFlats[0].id], // Flat 402
-    is_active: true,
-    is_inside: false,
-    created_at: '2026-10-24T05:00:00.000Z'
-  },
-  {
-    id: 'h0000000-0000-0000-0000-000000000003',
-    community_id: defaultCommunity.id,
-    name: 'Geeta Bai',
-    phone: '+91 98765 33445',
-    category: 'cook',
-    pass_code: '1003',
-    assigned_flat_ids: [defaultFlats[2].id], // Flat 701
-    is_active: true,
-    is_inside: false,
-    created_at: '2026-10-24T05:00:00.000Z'
-  },
-  {
-    id: 'h0000000-0000-0000-0000-000000000004',
-    community_id: defaultCommunity.id,
-    name: 'Santosh Kumar',
-    phone: '+91 98765 44556',
-    category: 'car_cleaner',
-    pass_code: '1004',
-    assigned_flat_ids: [defaultFlats[0].id, defaultFlats[3].id], // Flat 402, 1102
-    is_active: true,
-    is_inside: false,
-    created_at: '2026-10-24T05:00:00.000Z'
-  }
-];
-
-const defaultDailyHelpLogs: DailyHelpLog[] = [
-  {
-    id: 'hl000000-0000-0000-0000-000000000001',
-    helper_id: defaultDailyHelpers[0].id,
-    helper_name: 'Sunita Devi',
-    category: 'maid',
-    community_id: defaultCommunity.id,
-    gate_id: defaultGates[0].id,
-    gate_name: 'Main North Gate 1',
-    check_in_time: '2026-10-30T08:15:00.000Z',
-    guard_id: defaultUsers[0].id,
-    guard_name: 'Ramesh Kumar'
-  }
-];
-
-const defaultNotices: Notice[] = [
-  {
-    id: 'n0000000-0000-0000-0000-000000000001',
-    community_id: defaultCommunity.id,
-    title: 'A little maintenance. A better community.',
-    content: 'The water tanks in Tower A will be cleaned on Sunday, 10 AM–12 PM. Please store enough water beforehand. Thank you for helping us keep our community in great shape.',
-    category: 'maintenance',
-    is_pinned: true,
-    author_id: defaultUsers[2].id,
-    author_name: 'Estate Management Office',
-    created_at: '2026-10-31T08:00:00.000Z'
-  },
-  {
-    id: 'n0000000-0000-0000-0000-000000000002',
-    community_id: defaultCommunity.id,
-    title: 'Society Diwali Cultural Evening & Rangoli Showcase',
-    content: 'All residents and families are warmly invited to the Annual Diwali Celebration at the Central Clubhouse Amphitheatre this Sunday from 6:30 PM onwards. Sweets, music, and cultural games for kids!',
-    category: 'event',
-    is_pinned: true,
-    author_id: defaultUsers[2].id,
-    author_name: 'Cultural Committee',
-    created_at: '2026-10-28T09:30:00.000Z'
-  },
-  {
-    id: 'n0000000-0000-0000-0000-000000000003',
-    community_id: defaultCommunity.id,
-    title: 'Swimming Pool Hygiene & Chemical Treatment Routine',
-    content: 'The central swimming pool and kids wading pool will be closed on Tuesday between 06:00 AM and 02:00 PM for deep chlorination and vacuuming. Thank you for your cooperation.',
-    category: 'general',
-    is_pinned: false,
-    author_id: defaultUsers[2].id,
-    author_name: 'Estate Management Office',
-    created_at: '2026-10-27T11:00:00.000Z'
-  }
-];
-
-const defaultBlacklist: BlacklistEntry[] = [
-  {
-    id: 'bl-00000000-0000-0000-0000-000000000001',
-    community_id: defaultCommunity.id,
-    visitor_name: 'Unverified Sales Rep',
-    visitor_phone: '+91 91234 56789',
-    reason: 'Aggressive door-to-door soliciting without RWA permit. Banned by Committee.',
-    created_at: '2026-10-25T10:00:00.000Z',
-    created_by_name: 'Estate Management Office'
-  }
-];
-
+const defaultGuestPasses: GuestPass[] = [];
+const defaultVisitorRequests: VisitorRequest[] = [];
+const defaultAuditLogs: AuditLog[] = [];
+const defaultDailyHelpers: DailyHelper[] = [];
+const defaultDailyHelpLogs: DailyHelpLog[] = [];
+const defaultNotices: Notice[] = [];
+const defaultBlacklist: BlacklistEntry[] = [];
 const defaultSosAlerts: SosAlert[] = [];
 
 export function getBaselineState(): AppState {
@@ -1073,127 +361,153 @@ class AppStore {
         const customSavedFlats = parsedFlats.filter(f => !baseFlatIds.has(f.id));
         const flats = [...defaultFlats, ...customSavedFlats];
 
-        // Ensure users have updated emails and strict flat boundaries
-        const users = (parsed.users && Array.isArray(parsed.users) && parsed.users.length > 0)
-          ? parsed.users.map((u: UserProfile) => {
-              const defaultMatch = defaultUsers.find(du => du.id === u.id);
-              const isAarav = u.id === defaultUsers[1].id || 
-                              u.email === 'aarav.sharma@palmmeadows.in' || 
-                              u.email === 'owner@gatewaysecurity.in';
+        const legacyDummyUserIds = new Set([
+          'e0000000-0000-0000-0000-000000000006', // Arun Nair
+          'e0000000-0000-0000-0000-000000000301', // Suresh Patel
+          'e0000000-0000-0000-0000-000000000007', // Kishore Reddy
+          'e0000000-0000-0000-0000-000000001205', // Rohan Verma
+          'e0000000-0000-0000-0000-000000001206', // Pooja Hegde
+          'e0000000-0000-0000-0000-000000000402', // Ananya Sharma
+          'e0000000-0000-0000-0000-000000000005'  // Vikram Sharma
+        ]);
 
-              if (u.role === 'resident') {
-                if (isAarav) {
-                  return {
-                    ...u,
-                    email: defaultMatch?.email || u.email,
-                    owned_flat_ids: (u.owned_flat_ids && u.owned_flat_ids.length >= defaultFlats.length)
-                      ? u.owned_flat_ids
-                      : defaultUsers[1].owned_flat_ids
-                  };
-                }
-
-                // Custom resident (e.g. Sneha or new signup): preserve custom flat isolation
-                let matchingFlat = flats.find(f => f.id === u.flat_id);
-                if (!matchingFlat && u.flat_display) {
-                  matchingFlat = flats.find(f => u.flat_display?.includes(f.flat_number));
-                }
-
-                // If custom flat isn't in flats array yet, register it now
-                if (!matchingFlat && u.flat_display) {
-                  const parts = u.flat_display.split('•').map(s => s.trim());
-                  const blockName = parts[0] || 'Tower D';
-                  const floorNum = parseInt(parts[1]?.replace(/\D/g, '') || '1') || 1;
-                  const flatNum = parts[2]?.replace(/[^\d\w]/g, '').replace('Flat', '').trim() || '1502';
-                  const newFlatId = u.flat_id || ('d' + generateUUID().slice(1));
-                  matchingFlat = {
-                    id: newFlatId,
-                    community_id: u.community_id || defaultCommunity.id,
-                    block_id: 'c0000000-0000-0000-0000-000000000004',
-                    block_name: blockName,
-                    flat_number: flatNum,
-                    floor_number: floorNum,
-                    intercom_number: flatNum,
-                    is_occupied: true,
-                    occupancy_type: u.resident_type === 'tenant' ? 'rented' : 'self_occupied',
-                    owner_name: u.resident_type === 'owner' ? u.full_name : undefined,
-                    tenant_name: u.resident_type === 'tenant' ? u.full_name : undefined,
-                    tenant_phone: u.resident_type === 'tenant' ? u.phone : undefined,
-                    monthly_rent: 35000,
-                    maintenance_amount: 5000,
-                    maintenance_status: 'paid'
-                  };
-                  flats.push(matchingFlat);
-                }
-
-                const resolvedFlatId = matchingFlat ? matchingFlat.id : (u.flat_id || defaultFlats[0].id);
-
-                return {
-                  ...u,
-                  email: defaultMatch?.email || u.email,
-                  flat_id: resolvedFlatId,
-                  owned_flat_ids: [resolvedFlatId]
-                };
-              }
-
-              return {
-                ...u,
-                email: defaultMatch?.email || u.email
-              };
-            })
+        // Filter out legacy dummy users, preserve role accounts and real custom users
+        const rawUsers: UserProfile[] = (parsed.users && Array.isArray(parsed.users) && parsed.users.length > 0)
+          ? parsed.users.filter((u: UserProfile) => !legacyDummyUserIds.has(u.id))
           : defaultUsers;
 
-        const baseCurrentUser = parsed.currentUser || defaultUsers[1];
-        const isCurrentAarav = baseCurrentUser.id === defaultUsers[1].id || 
-                               baseCurrentUser.email === 'aarav.sharma@palmmeadows.in' || 
-                               baseCurrentUser.email === 'owner@gatewaysecurity.in';
-
-        let currentUser: UserProfile;
-        if (baseCurrentUser.role === 'resident') {
-          if (isCurrentAarav) {
-            currentUser = {
-              ...baseCurrentUser,
-              owned_flat_ids: (baseCurrentUser.owned_flat_ids && baseCurrentUser.owned_flat_ids.length >= defaultFlats.length)
-                ? baseCurrentUser.owned_flat_ids
-                : defaultUsers[1].owned_flat_ids
-            };
-          } else {
-            // Find corresponding updated user to preserve Sneha's Flat 1502
-            const matchingUser = users.find((u: UserProfile) => u.id === baseCurrentUser.id || (u.email && u.email === baseCurrentUser.email));
-            currentUser = matchingUser || {
-              ...baseCurrentUser,
-              owned_flat_ids: baseCurrentUser.flat_id ? [baseCurrentUser.flat_id] : (baseCurrentUser.owned_flat_ids || [])
-            };
-          }
-        } else {
-          currentUser = baseCurrentUser;
+        // Ensure default role accounts are always present with clean labels
+        const userMap = new Map<string, UserProfile>();
+        for (const def of defaultUsers) {
+          userMap.set(def.id, def);
         }
 
-        const storedRequests: VisitorRequest[] = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests))
-          ? parsed.visitorRequests.map((r: VisitorRequest) => {
-              if (r.id === 'f1000000-0000-0000-0000-000000000001') {
-                return {
-                  ...r,
-                  flat_id: defaultFlats[0].id,
-                  flat_number: '1204',
-                  block_name: 'Tower A',
-                  visitor_name: 'Rahul Kumar',
-                  delivery_company: 'Amazon'
+        for (const u of rawUsers) {
+          const defaultMatch = defaultUsers.find(du => du.id === u.id);
+          if (defaultMatch) {
+            userMap.set(u.id, {
+              ...u,
+              full_name: defaultMatch.full_name,
+              email: defaultMatch.email
+            });
+            continue;
+          }
+
+          // Custom user (like Sneha or Vinay Veddulapalli)
+          if (u.role === 'resident') {
+            let matchingFlat = flats.find(f => f.id === u.flat_id);
+            if (!matchingFlat && u.flat_display) {
+              matchingFlat = flats.find(f => u.flat_display?.includes(f.flat_number));
+            }
+
+            // Auto-heal Sneha to Flat 1502 if needed
+            if (u.full_name.toLowerCase().includes('sneha')) {
+              let flat1502 = flats.find(f => f.flat_number === '1502');
+              if (!flat1502) {
+                flat1502 = {
+                  id: 'd0000000-0000-0000-0000-000000001502',
+                  community_id: u.community_id || defaultCommunity.id,
+                  block_id: 'c0000000-0000-0000-0000-000000000004',
+                  block_name: 'Tower D',
+                  flat_number: '1502',
+                  floor_number: 15,
+                  intercom_number: '1502',
+                  is_occupied: true,
+                  occupancy_type: 'self_occupied',
+                  owner_name: u.full_name,
+                  maintenance_amount: 5000,
+                  maintenance_status: 'paid'
                 };
+                flats.push(flat1502);
               }
-              return r;
-            })
+              userMap.set(u.id, {
+                ...u,
+                flat_id: flat1502.id,
+                flat_display: 'Tower D • Floor 15 • Flat 1502',
+                owned_flat_ids: [flat1502.id]
+              });
+              continue;
+            }
+
+            if (!matchingFlat && u.flat_display) {
+              const parts = u.flat_display.split('•').map(s => s.trim());
+              const blockName = parts[0] || 'Tower D';
+              const floorNum = parseInt(parts[1]?.replace(/\D/g, '') || '1') || 1;
+              const flatNum = parts[2]?.replace(/[^\d\w]/g, '').replace('Flat', '').trim() || '1502';
+              const newFlatId = u.flat_id || ('d' + generateUUID().slice(1));
+              matchingFlat = {
+                id: newFlatId,
+                community_id: u.community_id || defaultCommunity.id,
+                block_id: 'c0000000-0000-0000-0000-000000000004',
+                block_name: blockName,
+                flat_number: flatNum,
+                floor_number: floorNum,
+                intercom_number: flatNum,
+                is_occupied: true,
+                occupancy_type: u.resident_type === 'tenant' ? 'rented' : 'self_occupied',
+                owner_name: u.resident_type === 'owner' ? u.full_name : undefined,
+                tenant_name: u.resident_type === 'tenant' ? u.full_name : undefined,
+                tenant_phone: u.resident_type === 'tenant' ? u.phone : undefined,
+                monthly_rent: 35000,
+                maintenance_amount: 5000,
+                maintenance_status: 'paid'
+              };
+              flats.push(matchingFlat);
+            }
+
+            const resolvedFlatId = matchingFlat ? matchingFlat.id : (u.flat_id || defaultFlats[0].id);
+            userMap.set(u.id, {
+              ...u,
+              flat_id: resolvedFlatId,
+              owned_flat_ids: [resolvedFlatId]
+            });
+          } else {
+            userMap.set(u.id, u);
+          }
+        }
+
+        const users = Array.from(userMap.values());
+
+        // Resolve current user: if user was a deleted dummy, fallback to default role user
+        let baseCurrentUser = parsed.currentUser || defaultUsers[0];
+        if (legacyDummyUserIds.has(baseCurrentUser.id)) {
+          baseCurrentUser = defaultUsers[0];
+        }
+        let currentUser = users.find((u: UserProfile) => u.id === baseCurrentUser.id || (u.email && u.email.toLowerCase() === (baseCurrentUser.email || '').toLowerCase())) || defaultUsers[0];
+
+        // Filter out dummy visitor requests (production baseline = 0 dummy records)
+        const visitorRequests = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests))
+          ? parsed.visitorRequests.filter((r: VisitorRequest) => 
+              !r.id.startsWith('f1000000-') && 
+              r.id !== '09534460-7aa9-4dd9-9092-7af5f48ea570' && 
+              r.id !== '21ea12cd-e726-425b-8ad3-1f5c14b0c4da'
+            )
           : [];
 
-        // Build a consolidated map to guarantee real society visitors are present
-        const visitorRequestsMap = new Map<string, VisitorRequest>();
-        for (const def of defaultVisitorRequests) {
-          visitorRequestsMap.set(def.id, def);
-        }
-        for (const req of storedRequests) {
-          visitorRequestsMap.set(req.id, req);
-        }
-        const visitorRequests = Array.from(visitorRequestsMap.values())
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        // Filter out dummy passes, helpers, notices, blacklist
+        const guestPasses = (parsed.guestPasses && Array.isArray(parsed.guestPasses))
+          ? parsed.guestPasses.filter((p: GuestPass) => !p.id.startsWith('f0000000-'))
+          : [];
+
+        const dailyHelpers = (parsed.dailyHelpers && Array.isArray(parsed.dailyHelpers))
+          ? parsed.dailyHelpers.filter((h: DailyHelper) => !h.id.startsWith('h0000000-'))
+          : [];
+
+        const dailyHelpLogs = (parsed.dailyHelpLogs && Array.isArray(parsed.dailyHelpLogs))
+          ? parsed.dailyHelpLogs.filter((l: DailyHelpLog) => !l.id.startsWith('hl000000-'))
+          : [];
+
+        const notices = (parsed.notices && Array.isArray(parsed.notices))
+          ? parsed.notices.filter((n: Notice) => !n.id.startsWith('n0000000-'))
+          : [];
+
+        const blacklist = (parsed.blacklist && Array.isArray(parsed.blacklist))
+          ? parsed.blacklist.filter((b: BlacklistEntry) => !b.id.startsWith('bl-00000000-'))
+          : [];
+
+        const auditLogs = (parsed.auditLogs && Array.isArray(parsed.auditLogs))
+          ? parsed.auditLogs.filter((a: AuditLog) => !a.id.startsWith('al-00000000-'))
+          : [];
 
         const upgradedState: AppState = {
           ...parsed,
@@ -1201,13 +515,13 @@ class AppStore {
           users,
           currentUser,
           visitorRequests,
-          guestPasses: parsed.guestPasses || defaultGuestPasses,
-          auditLogs: parsed.auditLogs || defaultAuditLogs,
-          dailyHelpers: parsed.dailyHelpers || defaultDailyHelpers,
-          dailyHelpLogs: parsed.dailyHelpLogs || defaultDailyHelpLogs,
-          notices: parsed.notices || defaultNotices,
-          sosAlerts: parsed.sosAlerts || defaultSosAlerts,
-          blacklist: (parsed.blacklist && Array.isArray(parsed.blacklist)) ? parsed.blacklist : defaultBlacklist,
+          guestPasses,
+          auditLogs,
+          dailyHelpers,
+          dailyHelpLogs,
+          notices,
+          sosAlerts: parsed.sosAlerts || [],
+          blacklist,
           connectionStatus: isSupabaseConfigured ? (this.state.connectionStatus || 'connecting') : 'local'
         };
 
@@ -1608,9 +922,9 @@ class AppStore {
       u.id === identifier || 
       u.role === identifier || 
       (u.email && u.email.toLowerCase() === lower) ||
-      ((lower === 'guard@gatewaysecurity.in' || lower === 'ramesh.guard@palmmeadows.in') && u.role === 'security_guard') ||
-      ((lower === 'owner@gatewaysecurity.in' || lower === 'aarav.sharma@palmmeadows.in') && u.role === 'resident' && u.resident_type === 'owner') ||
-      ((lower === 'admin@gatewaysecurity.in' || lower === 'rajesh.admin@prestige.in') && u.role === 'community_admin') ||
+      (lower === 'guard@gatewaysecurity.in' && u.role === 'security_guard') ||
+      (lower === 'owner@gatewaysecurity.in' && u.role === 'resident' && u.resident_type === 'owner') ||
+      (lower === 'admin@gatewaysecurity.in' && u.role === 'community_admin') ||
       (lower === 'superadmin@gatewaysecurity.in' && u.role === 'super_admin')
     );
     if (found) {
@@ -1618,11 +932,10 @@ class AppStore {
       let updatedFlats = [...this.state.flats];
 
       if (found.role === 'resident') {
-        const isAarav = found.id === defaultUsers[1].id || 
-                        found.email === 'aarav.sharma@palmmeadows.in' || 
-                        found.email === 'owner@gatewaysecurity.in';
+        const isDefaultOwner = found.id === defaultUsers[1].id || 
+                               found.email === 'owner@gatewaysecurity.in';
 
-        if (!isAarav) {
+        if (!isDefaultOwner) {
           let matchingFlat = updatedFlats.find(f => f.id === found.flat_id);
           if (!matchingFlat && found.flat_display) {
             matchingFlat = updatedFlats.find(f => found.flat_display?.includes(f.flat_number));
@@ -1714,7 +1027,7 @@ class AppStore {
       intercom_number: `${params.block_name.slice(-1)}${params.flat_number}`,
       is_occupied: params.occupancy_type !== 'vacant',
       occupancy_type: params.occupancy_type,
-      owner_name: this.state.currentUser.full_name || 'Aarav Sharma',
+      owner_name: this.state.currentUser.full_name || 'Resident Owner',
       tenant_name: params.tenant_name,
       tenant_phone: params.tenant_phone,
       monthly_rent: params.monthly_rent,
@@ -1766,7 +1079,28 @@ class AppStore {
   }
 
   public resetDemoData() {
-    const initial: AppState = getBaselineState();
+    const baseline = getBaselineState();
+    const legacyDummyUserIds = new Set([
+      'e0000000-0000-0000-0000-000000000006',
+      'e0000000-0000-0000-0000-000000000301',
+      'e0000000-0000-0000-0000-000000000007',
+      'e0000000-0000-0000-0000-000000001205',
+      'e0000000-0000-0000-0000-000000001206',
+      'e0000000-0000-0000-0000-000000000402',
+      'e0000000-0000-0000-0000-000000000005'
+    ]);
+    const customUsers = this.state.users.filter(u => 
+      !defaultUsers.some(d => d.id === u.id) && 
+      !legacyDummyUserIds.has(u.id)
+    );
+    const customFlats = this.state.flats.filter(f => 
+      !defaultFlats.some(d => d.id === f.id)
+    );
+    const initial: AppState = {
+      ...baseline,
+      users: [...baseline.users, ...customUsers],
+      flats: [...baseline.flats, ...customFlats]
+    };
     this.state = initial;
     this.saveToStorage(initial);
     this.notify();

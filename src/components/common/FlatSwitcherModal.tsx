@@ -62,14 +62,13 @@ export const FlatSwitcherModal: React.FC<FlatSwitcherModalProps> = ({
   }
 
   // Strict flat ownership separation:
-  // Aarav Sharma has multi-flat portfolio (all 10 demo units).
-  // Other residents (like Sneha or new users) only see their own assigned unit(s)!
-  const isAarav = currentUser.id === 'e0000000-0000-0000-0000-000000000002' || 
-                  currentUser.email === 'aarav.sharma@palmmeadows.in' || 
-                  currentUser.email === 'owner@gatewaysecurity.in';
+  // Resident Owner has multi-flat portfolio.
+  // Other residents only see their own assigned unit(s)!
+  const isDefaultOwner = currentUser.id === 'e0000000-0000-0000-0000-000000000004' || 
+                         currentUser.email === 'owner@gatewaysecurity.in';
 
   const ownedFlats = (() => {
-    if (isAarav) {
+    if (isDefaultOwner) {
       return state.flats;
     }
     const matched = state.flats.filter(f => 

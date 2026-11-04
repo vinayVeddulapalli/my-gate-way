@@ -202,12 +202,12 @@ export default function ResidentHomePage() {
               <span className="text-emerald-700 font-extrabold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">Lease Active</span>
             </div>
             <div className="text-base font-black text-[#142E31]">
-              {currentFlat.tenant_name || 'Suresh Patel'}
+              {currentFlat.tenant_name || 'Tenant Resident'}
             </div>
             <div className="text-xs text-[#808683] flex items-center gap-2 flex-wrap">
-              <span>Phone: {currentFlat.tenant_phone || '+91 97333 44556'}</span>
+              <span>Phone: {currentFlat.tenant_phone || 'N/A'}</span>
               <span>•</span>
-              <span>Lease valid till {currentFlat.lease_end_date || '30 Nov 2026'}</span>
+              <span>Lease valid till {currentFlat.lease_end_date || 'Ongoing'}</span>
             </div>
           </div>
 
@@ -777,7 +777,7 @@ export default function ResidentHomePage() {
                     {(currentUser.full_name || 'Resident').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                   </div>
                   <span className="text-xs font-semibold text-[#142E31]">
-                    {currentUser.full_name || 'Aarav Sharma'}
+                    {currentUser.full_name || 'Resident Owner'}
                   </span>
                 </div>
                 <Link

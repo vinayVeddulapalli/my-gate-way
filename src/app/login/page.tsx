@@ -319,91 +319,6 @@ function LoginForm() {
 
   return (
     <div className="min-h-[90vh] flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-slate-100 via-slate-50 to-[#F4F2EE] space-y-6">
-      
-      {/* Multi-Phone Network Testing Guide Banner */}
-      <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200/90 shadow-sm p-5 sm:p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
-              <Wifi className="w-5 h-5 text-emerald-700 animate-pulse" />
-            </div>
-            <div>
-              <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
-                Live Multi-Phone Network Testing
-              </h2>
-              <p className="text-xs text-slate-500">
-                Connect your phones on the same Wi-Fi and log in as separate roles:
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowCheatSheet(!showCheatSheet)}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-800 underline cursor-pointer"
-          >
-            {showCheatSheet ? 'Hide Demo Logins' : 'Show Demo Logins'}
-          </button>
-        </div>
-
-        {/* Local Wi-Fi URL Pill */}
-        <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="text-xs font-semibold text-slate-700 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Open on your phone browser:</span>
-            <code className="px-2 py-0.5 bg-slate-200 text-slate-900 rounded font-mono font-bold text-xs">
-              http://192.168.0.140:3001
-            </code>
-          </div>
-          <button
-            onClick={() => handleCopy('http://192.168.0.140:3001', 'URL')}
-            className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors cursor-pointer self-start sm:self-auto"
-          >
-            <Copy className="w-3 h-3 text-slate-500" />
-            <span>{copiedText === 'URL' ? 'Copied!' : 'Copy Phone URL'}</span>
-          </button>
-        </div>
-
-        {/* 4 Roles Credentials Grid */}
-        {showCheatSheet && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs pt-1">
-            <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl space-y-1">
-              <div className="font-extrabold text-emerald-800 flex items-center justify-between">
-                <span>1. Gate Guard</span>
-                <span className="text-[10px] bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded font-bold">/guard</span>
-              </div>
-              <div className="text-[11px] text-slate-600 font-mono truncate">guard@gatewaysecurity.in</div>
-              <div className="text-[11px] text-slate-800 font-mono font-bold">Guard@123</div>
-            </div>
-
-            <div className="p-3 bg-orange-50/60 border border-orange-200/80 rounded-2xl space-y-1">
-              <div className="font-extrabold text-[#E05D44] flex items-center justify-between">
-                <span>2. Owner (B-402)</span>
-                <span className="text-[10px] bg-orange-200 text-orange-900 px-1.5 py-0.2 rounded font-bold">/resident</span>
-              </div>
-              <div className="text-[11px] text-slate-600 font-mono truncate">owner@gatewaysecurity.in</div>
-              <div className="text-[11px] text-slate-800 font-mono font-bold">Owner@123</div>
-            </div>
-
-            <div className="p-3 bg-indigo-50/60 border border-indigo-200/80 rounded-2xl space-y-1">
-              <div className="font-extrabold text-indigo-800 flex items-center justify-between">
-                <span>3. Society Admin</span>
-                <span className="text-[10px] bg-indigo-200 text-indigo-900 px-1.5 py-0.2 rounded font-bold">/admin</span>
-              </div>
-              <div className="text-[11px] text-slate-600 font-mono truncate">admin@gatewaysecurity.in</div>
-              <div className="text-[11px] text-slate-800 font-mono font-bold">Admin@123</div>
-            </div>
-
-            <div className="p-3 bg-purple-50/60 border border-purple-200/80 rounded-2xl space-y-1">
-              <div className="font-extrabold text-purple-800 flex items-center justify-between">
-                <span>4. Super Admin</span>
-                <span className="text-[10px] bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded font-bold">/super-admin</span>
-              </div>
-              <div className="text-[11px] text-slate-600 font-mono truncate">superadmin@gatewaysecurity.in</div>
-              <div className="text-[11px] text-slate-800 font-mono font-bold">Super@123</div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Main Login Card */}
       <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden">
         {/* Top Community Banner */}
@@ -694,7 +609,7 @@ function LoginForm() {
 
                   {/* 1-Click Entry Pill */}
                   <div className="p-3 bg-orange-50/70 border border-orange-200/70 rounded-2xl flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <span className="text-xs text-slate-700 font-semibold">Quick Sign-In</span>
                     <button
                       type="button"
                       onClick={handleQuickSignInResident}
@@ -765,7 +680,7 @@ function LoginForm() {
                   </div>
 
                   <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-2xl flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <span className="text-xs text-slate-700 font-semibold">Quick Sign-In</span>
                     <button
                       type="button"
                       onClick={handleQuickSignInGuard}
@@ -836,7 +751,7 @@ function LoginForm() {
                   </div>
 
                   <div className="p-3 bg-indigo-50/70 border border-indigo-200/70 rounded-2xl flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <span className="text-xs text-slate-700 font-semibold">Quick Sign-In</span>
                     <button
                       type="button"
                       onClick={handleQuickSignInAdmin}
@@ -907,7 +822,7 @@ function LoginForm() {
                   </div>
 
                   <div className="p-3 bg-purple-50/70 border border-purple-200/70 rounded-2xl flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <span className="text-xs text-slate-700 font-semibold">Quick Sign-In</span>
                     <button
                       type="button"
                       onClick={handleQuickSignInSuper}

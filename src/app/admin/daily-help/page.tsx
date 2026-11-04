@@ -265,7 +265,7 @@ export default function AdminDailyHelpPage() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Ramesh Singh"
+                  placeholder="e.g. Daily Staff Full Name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   required

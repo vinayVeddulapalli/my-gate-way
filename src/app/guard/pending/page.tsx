@@ -107,7 +107,7 @@ function PendingContent() {
 
   const destFlat = state.flats.find(f => f.id === activeRequest.flat_id || f.flat_number === activeRequest.flat_number) || state.flats[0];
   const primaryPhone = destFlat?.primary_resident_phone || '+91 98111 22334';
-  const primaryName = destFlat?.primary_resident_name || 'Aarav Sharma';
+  const primaryName = destFlat?.primary_resident_name || 'Resident';
   const intercomNum = destFlat?.intercom_number || `1${activeRequest.flat_number}`;
 
   const catBadge = getCategoryBadge(activeRequest.category);
@@ -144,7 +144,7 @@ function PendingContent() {
   };
 
   const handleSimulatedLeaveAtGate = () => {
-    appStore.authorizeLeaveAtGate(activeRequest.id, state.users[1].id, 'Please leave with guard Ramesh at Gate 1');
+    appStore.authorizeLeaveAtGate(activeRequest.id, state.users[1]?.id || state.currentUser.id, 'Please leave at gate parcel desk');
   };
 
   return (

@@ -18,26 +18,20 @@ interface FamilyMember {
 
 export default function FamilyMembersPage() {
   const [state, setState] = useState<AppState>(appStore.getState());
-  const [members, setMembers] = useState<FamilyMember[]>([
-    {
-      id: 'fam-1',
-      name: 'Ananya Sharma',
-      relation: 'Self (Primary Owner)',
-      phone: '+91 98111 22334',
-      email: 'ananya.sharma@gmail.com',
-      canApprove: true,
-      isOwner: true
-    },
-    {
-      id: 'fam-2',
-      name: 'Vikram Sharma',
-      relation: 'Spouse',
-      phone: '+91 98111 22335',
-      email: 'vikram.sharma@gmail.com',
-      canApprove: true,
-      isOwner: false
-    }
-  ]);
+  const [members, setMembers] = useState<FamilyMember[]>(() => {
+    const u = appStore.getState().currentUser;
+    return [
+      {
+        id: 'fam-1',
+        name: u.full_name || 'Primary Resident',
+        relation: u.resident_type === 'owner' ? 'Self (Primary Owner)' : 'Self (Primary Tenant)',
+        phone: u.phone || '+91 98111 22334',
+        email: u.email || 'resident@gatewaysecurity.in',
+        canApprove: true,
+        isOwner: u.resident_type === 'owner'
+      }
+    ];
+  });
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -135,7 +129,7 @@ export default function FamilyMembersPage() {
                 required
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g. Sunita Sharma"
+                placeholder="e.g. Co-Resident Full Name"
                 className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:outline-hidden"
               />
             </div>
@@ -181,7 +175,7 @@ export default function FamilyMembersPage() {
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="sunita@gmail.com"
+                placeholder="resident@gatewaysecurity.in"
                 className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:outline-hidden"
               />
             </div>

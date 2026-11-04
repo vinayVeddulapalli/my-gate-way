@@ -72,7 +72,7 @@ export default function ResidentCommunityPage() {
       if (p.id === postId) {
         return {
           ...p,
-          comments: [...p.comments, { author: state.currentUser.full_name || 'Aarav Sharma', body: text }]
+          comments: [...p.comments, { author: state.currentUser.full_name || 'Resident', body: text }]
         };
       }
       return p;
@@ -223,11 +223,11 @@ export default function ResidentCommunityPage() {
           <div className="flex gap-3 overflow-x-auto pb-1">
             <div className="bg-white rounded-2xl p-4 border border-[#E7E6E1] shadow-xs flex items-center gap-3 min-w-[200px]">
               <div className="w-10 h-10 rounded-full bg-[#70959D] text-white font-black text-sm flex items-center justify-center shrink-0">
-                A
+                {(state.currentUser.full_name || 'R').charAt(0)}
               </div>
               <div>
-                <div className="text-xs font-bold text-[#142E31]">Aarav Sharma</div>
-                <div className="text-[11px] text-[#808683]">A-1204</div>
+                <div className="text-xs font-bold text-[#142E31]">{state.currentUser.full_name || 'Resident Owner'}</div>
+                <div className="text-[11px] text-[#808683]">{state.currentUser.flat_display || 'Verified Resident'}</div>
               </div>
             </div>
           </div>
@@ -247,8 +247,8 @@ export default function ResidentCommunityPage() {
                   <Building2 className="w-5 h-5 text-emerald-800" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-[#142E31]">Priya Menon</div>
-                  <div className="text-xs text-[#808683]">admin</div>
+                  <div className="text-sm font-bold text-[#142E31]">Community Admin</div>
+                  <div className="text-xs text-[#808683]">Estate Management Office</div>
                 </div>
               </div>
               <ShieldCheck className="w-5 h-5 text-[#44816A]" />
@@ -261,8 +261,8 @@ export default function ResidentCommunityPage() {
                   <Shield className="w-5 h-5 text-emerald-800" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-[#142E31]">Rajesh Kumar</div>
-                  <div className="text-xs text-[#808683]">guard</div>
+                  <div className="text-sm font-bold text-[#142E31]">Security Officer</div>
+                  <div className="text-xs text-[#808683]">Main Gate 1 Kiosk</div>
                 </div>
               </div>
               <ShieldCheck className="w-5 h-5 text-[#44816A]" />
@@ -283,8 +283,8 @@ export default function ResidentCommunityPage() {
                   setPosts(prev => [
                     {
                       id: `post-${Date.now()}`,
-                      author: state.currentUser.full_name || 'Aarav Sharma',
-                      initials: 'A',
+                      author: state.currentUser.full_name || 'Resident',
+                      initials: (state.currentUser.full_name || 'R').charAt(0),
                       community: state.currentCommunity.name,
                       body: text,
                       comments: []

@@ -105,7 +105,7 @@ export const LeaveAtGateModal: React.FC<LeaveAtGateModalProps> = ({
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Leave with guard Ramesh, will collect after 7 PM, or house help will pick up"
+              placeholder="e.g. Leave with gate security desk, will collect in evening, or house help will pick up"
               className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
             />
           </div>

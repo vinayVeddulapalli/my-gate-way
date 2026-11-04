@@ -63,72 +63,17 @@ export default function VisitorBookAndPassesPage() {
   const currentUser = state.currentUser;
   const currentFlat = state.flats.find(f => f.id === currentUser.flat_id) || state.flats[0];
 
-  // Combined visitor history and active requests for this flat
-  const flatRequests = state.visitorRequests.filter(r => r.flat_id === currentFlat.id);
+  // Visitor history and active requests for this flat
+  const flatRequests = state.visitorRequests.filter(r => r.flat_id === currentFlat.id || r.flat_number === currentFlat.flat_number);
 
-  // Baseline sample records matching wireframe (Rahul Kumar, Ananya Sharma, Vikram Singh, Suresh Patel, Deepak Yadav)
-  const sampleRecords: Array<{
-    id: string;
-    visitor_name: string;
-    category: VisitorCategory;
-    subtext: string;
-    status: 'pending' | 'checked_in' | 'checked_out' | 'rejected';
-    time: string;
-  }> = [
-    {
-      id: 'samp-1',
-      visitor_name: 'Rahul Kumar',
-      category: 'delivery',
-      subtext: 'Amazon • Delivery',
-      status: 'pending',
-      time: '11:05 AM'
-    },
-    {
-      id: 'samp-2',
-      visitor_name: 'Ananya Sharma',
-      category: 'guest',
-      subtext: 'Guest',
-      status: 'checked_in',
-      time: '10:36 AM'
-    },
-    {
-      id: 'samp-3',
-      visitor_name: 'Vikram Singh',
-      category: 'cab',
-      subtext: 'Uber • Cab',
-      status: 'checked_out',
-      time: '10:04 AM'
-    },
-    {
-      id: 'samp-4',
-      visitor_name: 'Suresh Patel',
-      category: 'service',
-      subtext: 'Urban Company • Service',
-      status: 'checked_out',
-      time: '9:19 AM'
-    },
-    {
-      id: 'samp-5',
-      visitor_name: 'Deepak Yadav',
-      category: 'delivery',
-      subtext: 'Swiggy • Delivery',
-      status: 'checked_out',
-      time: '11:19 AM'
-    }
-  ];
-
-  // Combine real store requests with sample wireframe items
-  const displayItems = [
-    ...flatRequests.map(r => ({
-      id: r.id,
-      visitor_name: r.visitor_name,
-      category: r.category,
-      subtext: `${r.delivery_company || (r.category === 'guest' ? 'Guest' : r.category)} • ${r.category.toUpperCase()}`,
-      status: r.status,
-      time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    })),
-    ...sampleRecords
-  ];
+  const displayItems = flatRequests.map(r => ({
+    id: r.id,
+    visitor_name: r.visitor_name,
+    category: r.category,
+    subtext: `${r.delivery_company || (r.category === 'guest' ? 'Guest' : r.category)} • ${r.category.toUpperCase()}`,
+    status: r.status,
+    time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }));
 
   // Apply filters
   const filteredVisitors = displayItems.filter(item => {
@@ -476,7 +421,7 @@ export default function VisitorBookAndPassesPage() {
                   type="text"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="e.g. Ananya Sharma"
+                  placeholder="e.g. Guest Full Name"
                   required
                   className="w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#E05D44]"
                 />

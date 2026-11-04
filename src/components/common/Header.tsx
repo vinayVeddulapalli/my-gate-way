@@ -119,8 +119,8 @@ export const Header: React.FC = () => {
   const roleDropdownMenu = isRoleDropdownOpen && (
     <div className="absolute right-0 mt-2 w-72 bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
       <div className="px-3 py-2 border-b border-slate-100">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Switch Testing Persona</p>
-        <p className="text-xs text-slate-500">1-click switch between all roles</p>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Portal Profile</p>
+        <p className="text-xs text-slate-500">Active account and role profiles</p>
       </div>
 
       <div className="max-h-80 overflow-y-auto py-1 divide-y divide-slate-100 text-xs">
@@ -135,7 +135,7 @@ export const Header: React.FC = () => {
             className={`w-full px-3 py-2 text-left flex items-center gap-2.5 hover:bg-slate-50 transition-colors ${state.currentUser.id === user.id ? 'bg-emerald-50/70 text-emerald-900 font-bold' : ''}`}
           >
             <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-              RK
+              {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SO'}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
@@ -233,7 +233,7 @@ export const Header: React.FC = () => {
           className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset Sample Baseline Data</span>
+          <span>Clear Test Logs & Reset State</span>
         </button>
       </div>
     </div>
@@ -325,9 +325,6 @@ export const Header: React.FC = () => {
                   <div className="hidden sm:block">
                     <div className="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
                       GATEWAY SECURITY
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-mono uppercase">
-                        v2.4
-                      </span>
                     </div>
                     <div className="text-xs text-slate-400 font-medium">Apartment Visitor Management</div>
                   </div>
@@ -382,20 +379,8 @@ export const Header: React.FC = () => {
                 </Link>
               </nav>
 
-              {/* Right Action Tools: Emergency, Simulator, & Role Switcher */}
+              {/* Right Action Tools: Emergency & Role Switcher */}
               <div className="flex items-center gap-2 sm:gap-3">
-                {/* Auto Resident Simulation Toggle */}
-                <button
-                  onClick={() => appStore.toggleAutoSimulateResident(!state.autoSimulateResident)}
-                  title="When enabled, pending visitor requests will automatically receive simulated resident approval after 4 seconds for easy testing"
-                  className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors ${state.autoSimulateResident
-                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-500/50 ring-1 ring-emerald-500/30'
-                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                    }`}
-                >
-                  <Bot className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Auto-Approval: {state.autoSimulateResident ? 'ON' : 'OFF'}</span>
-                </button>
 
                 {/* Supabase Cloud Live Status Pill */}
                 <button

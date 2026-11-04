@@ -45,7 +45,7 @@ function VisitorDetailContent({ params }: { params: Promise<{ id: string }> }) {
     flat_id: state.flats[0].id,
     gate_id: state.gates[0].id,
     guard_id: state.users[0].id,
-    visitor_name: 'Ananya Sharma',
+    visitor_name: 'Visitor Pass',
     visitor_phone: '+91 98765 43211',
     category: 'guest',
     purpose: 'Personal visit',
