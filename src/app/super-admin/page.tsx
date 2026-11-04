@@ -46,7 +46,7 @@ export default function SuperAdminPage() {
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('Pass@123');
-  const [formRole, setFormRole] = useState<UserRole>('security_guard');
+  const [formRole, setFormRole] = useState<UserRole>('resident');
   const [formPhone, setFormPhone] = useState('+91 ');
   
   // Flat State & Custom Options
@@ -661,21 +661,159 @@ export default function SuperAdminPage() {
               </div>
             </div>
 
-            {/* Role Selector */}
-            <div>
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                Security Role & Permissions *
+            {/* Role Selector with 1-Click Quick Selectors */}
+            <div className="sm:col-span-2 lg:col-span-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <label className="block text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-2">
+                Select Persona Role *
               </label>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormRole('resident')}
+                  className={`p-3 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 border-2 transition-all cursor-pointer ${
+                    formRole === 'resident'
+                      ? 'bg-orange-50 border-[#E05D44] text-[#E05D44] shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-base">🏠</span>
+                  <span>Resident (Owner/Tenant)</span>
+                  <span className="text-[10px] font-normal text-slate-500">Requires Flat</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormRole('security_guard')}
+                  className={`p-3 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 border-2 transition-all cursor-pointer ${
+                    formRole === 'security_guard'
+                      ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-base">🛡️</span>
+                  <span>Security Guard</span>
+                  <span className="text-[10px] font-normal text-slate-500">Gate Kiosk</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormRole('community_admin')}
+                  className={`p-3 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 border-2 transition-all cursor-pointer ${
+                    formRole === 'community_admin'
+                      ? 'bg-purple-50 border-purple-600 text-purple-700 shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-base">🏢</span>
+                  <span>Community Admin</span>
+                  <span className="text-[10px] font-normal text-slate-500">Estate Office</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormRole('super_admin')}
+                  className={`p-3 rounded-xl text-xs font-extrabold flex flex-col items-center justify-center gap-1 border-2 transition-all cursor-pointer ${
+                    formRole === 'super_admin'
+                      ? 'bg-slate-900 border-slate-900 text-amber-300 shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-base">⚡</span>
+                  <span>Super Admin</span>
+                  <span className="text-[10px] font-normal text-slate-400">Multi-tenant Root</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Flat Assignment (ALWAYS VISIBLE) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Home className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Assigned Flat / Unit</span>
+                  {formRole === 'resident' ? (
+                    <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                      * Required
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-normal text-slate-400">
+                      (Optional)
+                    </span>
+                  )}
+                </label>
+                {formFlatId === 'custom' && (
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                    Custom Mode
+                  </span>
+                )}
+              </div>
               <select
-                value={formRole}
-                onChange={(e) => setFormRole(e.target.value as UserRole)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
+                value={formFlatId}
+                onChange={(e) => setFormFlatId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
               >
-                <option value="security_guard">🛡️ Security Guard (Gate Kiosk Desk)</option>
-                <option value="resident">🏠 Resident (Owner or Tenant)</option>
-                <option value="community_admin">🏢 Community Admin (Estate Office)</option>
-                <option value="super_admin">⚡ Super Admin (Multi-Tenant Root)</option>
+                {formRole !== 'resident' && (
+                  <option value="">None (Gate Terminal / Office Desk Only)</option>
+                )}
+                <optgroup label="Preset Society Units">
+                  {state.flats.map((flat) => (
+                    <option key={flat.id} value={flat.id}>
+                      {flat.block_name || 'Tower A'} • Floor {flat.floor_number} • Flat {flat.flat_number}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Custom Option">
+                  <option value="custom" className="font-bold text-blue-700 bg-blue-50">
+                    ➕ Custom Flat / Unit (Type Any Block & Number)...
+                  </option>
+                </optgroup>
               </select>
+
+              {/* Custom Flat Inputs Sub-card */}
+              {formFlatId === 'custom' && (
+                <div className="mt-2 p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2 text-xs animate-in fade-in duration-150">
+                  <div className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
+                    <Home className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Custom Flat Details</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Block / Tower</label>
+                      <input
+                        type="text"
+                        value={customBlockName}
+                        onChange={(e) => setCustomBlockName(e.target.value)}
+                        placeholder="e.g. Tower D"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Floor</label>
+                      <input
+                        type="number"
+                        value={customFloorNumber}
+                        onChange={(e) => setCustomFloorNumber(e.target.value)}
+                        placeholder="14"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Flat No.</label>
+                      <input
+                        type="text"
+                        value={customFlatNumber}
+                        onChange={(e) => setCustomFlatNumber(e.target.value)}
+                        placeholder="1402"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium font-bold"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-blue-700 font-mono">
+                    Preview: <span className="font-bold">{customBlockName || 'Tower A'} • Floor {customFloorNumber || 1} • Flat {customFlatNumber || '101'}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Resident Occupancy Type (With Custom Option) */}
@@ -759,85 +897,6 @@ export default function SuperAdminPage() {
                     placeholder="e.g. Chief Security Officer"
                     className="mt-2 w-full px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
                   />
-                )}
-              </div>
-            )}
-
-            {/* Flat Assignment (If Resident - With Custom Option) */}
-            {formRole === 'resident' && (
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                    Assigned Flat / Unit *
-                  </label>
-                  {formFlatId === 'custom' && (
-                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                      Custom Mode
-                    </span>
-                  )}
-                </div>
-                <select
-                  value={formFlatId}
-                  onChange={(e) => setFormFlatId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
-                >
-                  <optgroup label="Preset Society Units">
-                    {state.flats.map((flat) => (
-                      <option key={flat.id} value={flat.id}>
-                        {flat.block_name || 'Tower A'} • Floor {flat.floor_number} • Flat {flat.flat_number}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Custom Option">
-                    <option value="custom" className="font-bold text-blue-700 bg-blue-50">
-                      ➕ Custom Flat / Unit (Type Any Block & Number)...
-                    </option>
-                  </optgroup>
-                </select>
-
-                {/* Custom Flat Inputs Sub-card */}
-                {formFlatId === 'custom' && (
-                  <div className="mt-2 p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2 text-xs animate-in fade-in duration-150">
-                    <div className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
-                      <Home className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Custom Flat Details</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Block / Tower</label>
-                        <input
-                          type="text"
-                          value={customBlockName}
-                          onChange={(e) => setCustomBlockName(e.target.value)}
-                          placeholder="e.g. Tower D"
-                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Floor</label>
-                        <input
-                          type="number"
-                          value={customFloorNumber}
-                          onChange={(e) => setCustomFloorNumber(e.target.value)}
-                          placeholder="14"
-                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Flat No.</label>
-                        <input
-                          type="text"
-                          value={customFlatNumber}
-                          onChange={(e) => setCustomFlatNumber(e.target.value)}
-                          placeholder="1402"
-                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium font-bold"
-                        />
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-blue-700 font-mono">
-                      Preview: <span className="font-bold">{customBlockName || 'Tower A'} • Floor {customFloorNumber || 1} • Flat {customFlatNumber || '101'}</span>
-                    </div>
-                  </div>
                 )}
               </div>
             )}
