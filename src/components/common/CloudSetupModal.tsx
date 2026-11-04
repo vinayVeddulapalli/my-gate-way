@@ -27,6 +27,8 @@ export const CloudSetupModal: React.FC<CloudSetupModalProps> = ({ isOpen, onClos
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedStep, setCopiedStep] = useState<string | null>(null);
+  const [syncingCloud, setSyncingCloud] = useState(false);
+  const [syncCloudMessage, setSyncCloudMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -40,6 +42,24 @@ export const CloudSetupModal: React.FC<CloudSetupModalProps> = ({ isOpen, onClos
       setTestResult({ success: false, message: `Error: ${(err as Error).message}` });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleSyncCloudRecords = async () => {
+    setSyncingCloud(true);
+    setSyncCloudMessage(null);
+    try {
+      const res = await appStore.syncWithCloud();
+      if (res.success) {
+        setSyncCloudMessage(`Successfully synchronized ${res.count} records from Supabase Cloud!`);
+      } else {
+        setSyncCloudMessage(`Notice: ${res.error || 'Failed to sync'}`);
+      }
+    } catch (err: unknown) {
+      setSyncCloudMessage(`Sync error: ${(err as Error).message}`);
+    } finally {
+      setSyncingCloud(false);
+      setTimeout(() => setSyncCloudMessage(null), 4000);
     }
   };
 
@@ -144,6 +164,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             {!testResult && (
               <div className="text-xs text-slate-500">
                 Click above to ping your Supabase database and verify table schemas and permissions.
+              </div>
+            )}
+
+            {isSupabaseConfigured && (
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-slate-800">Force Cloud Pull / Refresh</div>
+                  <div className="text-[11px] text-slate-500">Sync all visitor entries from Supabase to this screen</div>
+                </div>
+                <button
+                  onClick={handleSyncCloudRecords}
+                  disabled={syncingCloud}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncingCloud ? 'animate-spin' : ''}`} />
+                  <span>{syncingCloud ? 'Syncing...' : 'Sync Live Records'}</span>
+                </button>
+              </div>
+            )}
+
+            {syncCloudMessage && (
+              <div className="mt-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>{syncCloudMessage}</span>
               </div>
             )}
           </div>

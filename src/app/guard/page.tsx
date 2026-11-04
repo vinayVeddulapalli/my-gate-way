@@ -21,7 +21,8 @@ import {
   KeyRound,
   MapPin,
   Wifi,
-  WifiOff
+  WifiOff,
+  RefreshCw
 } from 'lucide-react';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { ConfirmationModal } from '@/components/common/ConfirmationModal';
@@ -133,7 +134,12 @@ export default function GuardDashboardPage() {
             {isOnline && state.connectionStatus === 'connected' ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                Cloud Synced (Live)
+                Cloud Synced ({state.visitorRequests.length} records)
+              </span>
+            ) : isOnline && state.connectionStatus === 'connecting' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-300 shadow-xs">
+                <RefreshCw className="w-3 h-3 text-sky-600 animate-spin" />
+                Connecting to Cloud...
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs" title="Terminal is operating in offline resilient mode. All data is cached locally on this device.">

@@ -7,6 +7,7 @@ import { appStore, AppState } from '@/lib/store';
 import { 
   Building2, 
   CheckCircle2, 
+  AlertCircle,
   ArrowLeftRight, 
   RotateCcw, 
   Plus, 
@@ -27,6 +28,8 @@ export default function ResidentProfileSettingsPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ text: string; success: boolean } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -56,10 +59,31 @@ export default function ResidentProfileSettingsPage() {
     router.push('/guard');
   };
 
-  const handleResetData = () => {
-    appStore.resetDemoData();
-    setResetSuccess(true);
-    setTimeout(() => setResetSuccess(false), 3000);
+  const handleSyncCloud = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await appStore.syncWithCloud();
+      if (res.success) {
+        setSyncMessage({
+          text: `Successfully synchronized ${res.count} society visitor records from Supabase Cloud!`,
+          success: true
+        });
+      } else {
+        setSyncMessage({
+          text: `Cloud sync notice: ${res.error || 'Unable to connect to Supabase. Preserving offline records.'}`,
+          success: false
+        });
+      }
+    } catch (err: unknown) {
+      setSyncMessage({
+        text: `Sync error: ${(err as Error).message}`,
+        success: false
+      });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMessage(null), 5000);
+    }
   };
 
   return (
@@ -74,10 +98,18 @@ export default function ResidentProfileSettingsPage() {
         </p>
       </div>
 
-      {resetSuccess && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Database synchronized with live society records.</span>
+      {syncMessage && (
+        <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 border shadow-xs ${
+          syncMessage.success
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-amber-50 border-amber-200 text-amber-800'
+        }`}>
+          {syncMessage.success ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          )}
+          <span>{syncMessage.text}</span>
         </div>
       )}
 
@@ -156,11 +188,12 @@ export default function ResidentProfileSettingsPage() {
 
           {/* Secondary Button: Sync Society Cloud Data */}
           <button
-            onClick={handleResetData}
-            className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            onClick={handleSyncCloud}
+            disabled={syncing}
+            className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-60 shadow-xs"
           >
-            <RotateCcw className="w-4 h-4" />
-            <span>Synchronize Society Cloud Data</span>
+            <RotateCcw className={`w-4 h-4 text-emerald-600 ${syncing ? 'animate-spin' : ''}`} />
+            <span>{syncing ? 'Synchronizing with Cloud...' : 'Synchronize Society Cloud Data'}</span>
           </button>
         </div>
       </div>

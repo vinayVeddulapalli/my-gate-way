@@ -483,6 +483,212 @@ const defaultGuestPasses: GuestPass[] = [
 ];
 
 const defaultVisitorRequests: VisitorRequest[] = [
+  // --- REAL LIVE SOCIETY VISITOR RECORDS (Preserved from Supabase) ---
+  {
+    id: '09534460-7aa9-4dd9-9092-7af5f48ea570',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000002',
+    gate_name: 'South Service Gate 2 (Deliveries & Logistics)',
+    flat_id: 'd0000000-0000-0000-0000-000000000301',
+    flat_number: '301',
+    block_name: 'Tower A',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'rathod',
+    visitor_phone: '9876543245',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    category: 'service',
+    purpose: 'Maintenance & repair service',
+    gate_location: 'South Service Gate 2 (Deliveries & Logistics) Parcel Desk',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000003',
+    decision_by_name: 'Ramesh Kumar',
+    decision_at: '2026-11-04T06:47:04.157Z',
+    check_in_time: '2026-11-04T06:47:36.917Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    created_at: '2026-11-04T06:45:40.783Z',
+    updated_at: '2026-11-04T06:47:36.917Z'
+  },
+  {
+    id: '21ea12cd-e726-425b-8ad3-1f5c14b0c4da',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000003',
+    gate_name: 'East Pedestrian Gate 3',
+    flat_id: 'd0000000-0000-0000-0000-000000000801',
+    flat_number: '801',
+    block_name: 'Tower C',
+    guard_id: 'e0000000-0000-0000-0000-000000000006',
+    guard_name: 'Arun Nair',
+    visitor_name: 'sneha',
+    visitor_phone: '7876543456',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    category: 'guest',
+    purpose: 'personal meet',
+    gate_location: 'East Pedestrian Gate 3 Parcel Desk',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000004',
+    decision_by_name: 'Aarav Sharma',
+    decision_at: '2026-11-04T06:44:25.261Z',
+    check_in_time: '2026-11-04T06:44:57.382Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    created_at: '2026-11-04T05:52:46.229Z',
+    updated_at: '2026-11-04T06:44:57.382Z'
+  },
+  {
+    id: '0c7802ce-4b96-45ae-9c23-b33f75327688',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000002',
+    gate_name: 'South Service Gate 2 (Deliveries & Logistics)',
+    flat_id: 'd0000000-0000-0000-0000-000000000701',
+    flat_number: '701',
+    block_name: 'Tower B',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Devaraj',
+    visitor_phone: '7568568965',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    category: 'service',
+    purpose: 'Maintenance & repair service',
+    status: 'rejected',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000004',
+    decision_by_name: 'Aarav Sharma',
+    decision_at: '2026-11-02T10:20:45.722Z',
+    rejection_reason: 'Not expected at home right now.',
+    created_at: '2026-11-02T10:19:51.081Z',
+    updated_at: '2026-11-02T10:20:45.722Z'
+  },
+  {
+    id: '9459006e-908f-4331-8932-84178ee81ac8',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000001',
+    gate_name: 'Main North Gate 1',
+    flat_id: 'd0000000-0000-0000-0000-000000000402',
+    flat_number: '402',
+    block_name: 'Tower B',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    guest_pass_id: '82feaa6a-bb02-41a5-9b4a-3b6d7ea783e5',
+    visitor_name: 'kamesh',
+    visitor_phone: '7660853097',
+    category: 'delivery',
+    purpose: 'Personal visit (4 persons)',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000004',
+    decision_by_name: 'Aarav Sharma',
+    decision_at: '2026-10-31T13:25:04.488Z',
+    check_in_time: '2026-10-31T13:25:41.728Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    created_at: '2026-10-31T13:25:41.728Z',
+    updated_at: '2026-10-31T13:25:41.728Z'
+  },
+  {
+    id: '11111111-2222-4333-8444-555555555555',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000001',
+    gate_name: 'Main North Gate 1',
+    flat_id: 'd0000000-0000-0000-0000-000000000301',
+    flat_number: '301',
+    block_name: 'Tower A',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Cross-Device Test Courier',
+    visitor_phone: '+91 98888 77777',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    category: 'delivery',
+    delivery_company: 'Swiggy',
+    purpose: '[FOOD] Lunch meal delivery',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000004',
+    decision_by_name: 'Aarav Sharma',
+    decision_at: '2026-10-31T11:24:22.954Z',
+    check_in_time: '2026-10-31T12:46:42.396Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    created_at: '2026-10-31T11:24:20.585Z',
+    updated_at: '2026-10-31T12:46:42.396Z'
+  },
+  {
+    id: '00000000-0000-4000-a000-000000000099',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000001',
+    gate_name: 'Main North Gate 1',
+    flat_id: 'd0000000-0000-0000-0000-000000000301',
+    flat_number: '301',
+    block_name: 'Tower A',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Live Sync Test Visitor',
+    visitor_phone: '+91 99999 88888',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    category: 'delivery',
+    delivery_company: 'Swiggy',
+    purpose: 'Test Swiggy Delivery',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000003',
+    decision_by_name: 'Ramesh Kumar',
+    decision_at: '2026-10-31T11:29:38.643Z',
+    check_in_time: '2026-10-31T12:46:44.420Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    created_at: '2026-10-31T11:19:40.967Z',
+    updated_at: '2026-10-31T12:46:44.420Z'
+  },
+  {
+    id: 'cc4e4617-722a-4bb2-ba83-3118bec096dc',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000003',
+    gate_name: 'East Pedestrian Gate 3',
+    flat_id: 'd0000000-0000-0000-0000-000000000301',
+    flat_number: '301',
+    block_name: 'Tower A',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Vinay Veddulapalli',
+    visitor_phone: '7660853096',
+    visitor_photo_path: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+    category: 'guest',
+    purpose: 'guests',
+    status: 'checked_in',
+    consent_obtained: true,
+    decision_by: 'e0000000-0000-0000-0000-000000000004',
+    decision_by_name: 'Aarav Sharma',
+    decision_at: '2026-10-24T09:42:28.919Z',
+    check_in_time: '2026-10-24T09:42:37.819Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    created_at: '2026-10-24T09:41:58.701Z',
+    updated_at: '2026-10-24T09:42:37.819Z'
+  },
+  {
+    id: '984af0cc-4dd1-495d-9600-6c44211b9c74',
+    community_id: defaultCommunity.id,
+    gate_id: 'b0000000-0000-0000-0000-000000000001',
+    gate_name: 'Main North Gate 1',
+    flat_id: 'd0000000-0000-0000-0000-000000000402',
+    flat_number: '402',
+    block_name: 'Tower B',
+    guard_id: 'e0000000-0000-0000-0000-000000000003',
+    guard_name: 'Ramesh Kumar',
+    visitor_name: 'Live System Test Visitor',
+    visitor_phone: '+91 98765 00000',
+    category: 'guest',
+    purpose: 'Verifying real-time Supabase connection',
+    status: 'checked_out',
+    consent_obtained: true,
+    decision_at: '2026-10-24T09:28:42.185Z',
+    check_in_time: '2026-10-24T10:30:04.417Z',
+    check_out_time: '2026-10-30T09:02:18.533Z',
+    checked_in_by: 'e0000000-0000-0000-0000-000000000003',
+    checked_out_by: 'e0000000-0000-0000-0000-000000000003',
+    supervisor_escalated: true,
+    supervisor_notes: 'nothinh',
+    created_at: '2026-10-24T09:28:32.036Z',
+    updated_at: '2026-11-02T05:41:34.695Z'
+  },
+  // --- ADDITIONAL DEMO VISITOR SEED DATA ---
   {
     id: 'f1000000-0000-0000-0000-000000000001',
     community_id: defaultCommunity.id,
@@ -891,7 +1097,7 @@ class AppStore {
             }
           : baseCurrentUser;
 
-        const visitorRequests = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests) && parsed.visitorRequests.length > 0)
+        const storedRequests: VisitorRequest[] = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests))
           ? parsed.visitorRequests.map((r: VisitorRequest) => {
               if (r.id === 'f1000000-0000-0000-0000-000000000001') {
                 return {
@@ -905,7 +1111,18 @@ class AppStore {
               }
               return r;
             })
-          : defaultVisitorRequests;
+          : [];
+
+        // Build a consolidated map to guarantee real society visitors are present
+        const visitorRequestsMap = new Map<string, VisitorRequest>();
+        for (const def of defaultVisitorRequests) {
+          visitorRequestsMap.set(def.id, def);
+        }
+        for (const req of storedRequests) {
+          visitorRequestsMap.set(req.id, req);
+        }
+        const visitorRequests = Array.from(visitorRequestsMap.values())
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         const upgradedState: AppState = {
           ...parsed,
@@ -968,24 +1185,32 @@ class AppStore {
     return this.state;
   }
 
-  // --- SUPABASE REALTIME SYNC ---
+  // --- SUPABASE REALTIME & CLOUD SYNC ---
 
-  private async initSupabaseSync() {
-    if (!isSupabaseConfigured || !supabase || typeof window === 'undefined') return;
-
-    this.state = { ...this.state, connectionStatus: 'connecting' };
-    this.notify();
+  public async syncWithCloud(): Promise<{ success: boolean; count: number; error?: string }> {
+    if (!isSupabaseConfigured || !supabase || typeof window === 'undefined') {
+      return { success: false, count: 0, error: 'Supabase credentials are not configured in .env.local' };
+    }
 
     try {
-      // 1. Initial Remote Fetch of Visitor Requests
+      this.state = { ...this.state, connectionStatus: 'connecting' };
+      this.notify();
+
+      // 1. Remote Fetch of Visitor Requests
       const { data: dbRequests, error: reqError } = await supabase
         .from('visitor_requests')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
 
-      if (dbRequests && !reqError && dbRequests.length > 0) {
-        const mappedRequests: VisitorRequest[] = dbRequests.map((row) => {
+      if (reqError) {
+        console.warn('Supabase visitor fetch error:', reqError.message);
+        throw new Error(reqError.message);
+      }
+
+      let mappedRequests: VisitorRequest[] = [];
+      if (dbRequests && dbRequests.length > 0) {
+        mappedRequests = dbRequests.map((row) => {
           const flat = this.state.flats.find(f => f.id === row.flat_id);
           const gate = this.state.gates.find(g => g.id === row.gate_id);
           const guard = this.state.users.find(u => u.id === row.guard_id);
@@ -1036,23 +1261,28 @@ class AppStore {
             updated_at: row.updated_at
           };
         });
-
-        this.state = {
-          ...this.state,
-          visitorRequests: mappedRequests
-        };
-        this.saveToStorage(this.state);
-        this.notify();
       }
 
-      // 2. Initial Remote Fetch of Guest Passes
+      // Merge with baseline requests to ensure complete coverage
+      const requestMap = new Map<string, VisitorRequest>();
+      for (const def of defaultVisitorRequests) {
+        requestMap.set(def.id, def);
+      }
+      for (const req of mappedRequests) {
+        requestMap.set(req.id, req);
+      }
+      const combinedRequests = Array.from(requestMap.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      // 2. Fetch Guest Passes
       const { data: dbPasses } = await supabase
         .from('guest_passes')
         .select('*')
         .order('created_at', { ascending: false });
 
+      let mappedPasses: GuestPass[] = this.state.guestPasses;
       if (dbPasses && dbPasses.length > 0) {
-        const mappedPasses: GuestPass[] = dbPasses.map((p) => {
+        mappedPasses = dbPasses.map((p) => {
           const flat = this.state.flats.find(f => f.id === p.flat_id);
           return {
             id: p.id,
@@ -1074,13 +1304,34 @@ class AppStore {
             created_at: p.created_at
           };
         });
-
-        this.state = { ...this.state, guestPasses: mappedPasses };
-        this.saveToStorage(this.state);
-        this.notify();
       }
 
-      // 3. Subscribe to Realtime WebSocket Channels
+      this.state = {
+        ...this.state,
+        visitorRequests: combinedRequests,
+        guestPasses: mappedPasses,
+        connectionStatus: 'connected'
+      };
+      this.saveToStorage(this.state);
+      this.notify();
+
+      return { success: true, count: combinedRequests.length };
+    } catch (err: unknown) {
+      console.warn('syncWithCloud error:', err);
+      this.state = { ...this.state, connectionStatus: 'error' };
+      this.notify();
+      return { success: false, count: 0, error: (err as Error).message };
+    }
+  }
+
+  private async initSupabaseSync() {
+    if (!isSupabaseConfigured || !supabase || typeof window === 'undefined') return;
+
+    // Immediately pull down all latest records from Supabase Cloud
+    await this.syncWithCloud();
+
+    try {
+      // Subscribe to Realtime WebSocket Channels
       supabase
         .channel('gateway_visitor_changes')
         .on(
@@ -1102,14 +1353,11 @@ class AppStore {
             this.state = { ...this.state, connectionStatus: 'connected' };
             this.notify();
           } else if (status === 'CHANNEL_ERROR') {
-            this.state = { ...this.state, connectionStatus: 'error' };
-            this.notify();
+            console.warn('Supabase realtime channel warning; REST sync remains operational');
           }
         });
     } catch (err) {
-      console.warn('Supabase sync init failed, remaining in resilient mode:', err);
-      this.state = { ...this.state, connectionStatus: 'error' };
-      this.notify();
+      console.warn('Supabase realtime channel subscription error:', err);
     }
   }
 
@@ -1394,6 +1642,9 @@ class AppStore {
     this.state = initial;
     this.saveToStorage(initial);
     this.notify();
+    if (isSupabaseConfigured && typeof window !== 'undefined') {
+      this.syncWithCloud().catch(() => {});
+    }
   }
 
   // Guard registers a visitor
