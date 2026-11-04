@@ -539,8 +539,10 @@ export default function ResidentHomePage() {
               </div>
             </div>
 
-            {/* AT YOUR GATE CARD (Image 4) */}
-            {renderGateCard()}
+            {/* AT YOUR GATE CARD (Mobile only, on desktop it appears in the right sidebar) */}
+            <div className="lg:hidden">
+              {renderGateCard()}
+            </div>
 
             {/* VISITOR UPDATES TILE */}
             <div className="bg-white rounded-3xl border border-[#E7E6E1] p-5 space-y-4 shadow-xs">
