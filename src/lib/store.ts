@@ -17,7 +17,8 @@ import {
   SosType,
   SosStatus,
   isValidStatusTransition,
-  BlacklistEntry
+  BlacklistEntry,
+  UserRole
 } from '@/types';
 import { soundNotifier } from './audio';
 import { supabase, isSupabaseConfigured } from './supabase';
@@ -2596,6 +2597,219 @@ class AppStore {
 
     this.saveToStorage(this.state);
     this.notify();
+    return true;
+  }
+
+  // Dynamic User & Role Management (CRUD)
+  public async createUser(params: {
+    full_name: string;
+    email: string;
+    phone: string;
+    role: UserRole;
+    flat_id?: string;
+    password?: string;
+  }): Promise<{ user: UserProfile; error?: string }> {
+    const cleanEmail = params.email.trim().toLowerCase();
+    const existing = this.state.users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      return { user: existing, error: 'User with this email already exists' };
+    }
+
+    let authUserId = generateUUID();
+
+    // If Supabase is connected and password provided, create in Supabase Auth
+    if (isSupabaseConfigured && supabase && params.password) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: params.password,
+          options: {
+            data: {
+              full_name: params.full_name,
+              phone: params.phone,
+              role: params.role,
+              community_id: this.state.currentCommunity.id
+            }
+          }
+        });
+        if (error) {
+          console.warn('Supabase Auth signUp notice:', error.message);
+        } else if (data?.user?.id) {
+          authUserId = data.user.id;
+        }
+      } catch (err) {
+        console.warn('Supabase signup bypass:', err);
+      }
+    }
+
+    const flat = params.flat_id ? this.state.flats.find(f => f.id === params.flat_id) : undefined;
+    const flatDisplay = flat ? `${flat.block_name || 'Tower A'} • Floor ${flat.floor_number} • Flat ${flat.flat_number}` : undefined;
+
+    const newUser: UserProfile = {
+      id: authUserId,
+      community_id: this.state.currentCommunity.id,
+      full_name: params.full_name.trim(),
+      email: cleanEmail,
+      phone: params.phone.trim(),
+      role: params.role,
+      flat_id: params.flat_id,
+      flat_display: flatDisplay,
+      owned_flat_ids: params.flat_id ? [params.flat_id] : [],
+      notification_push_enabled: true,
+      notification_sms_enabled: false,
+      notification_sound_enabled: true,
+      is_active: true
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'CREATE_USER',
+      entity_type: 'user_profiles',
+      entity_id: newUser.id,
+      metadata: { full_name: newUser.full_name, email: newUser.email, role: newUser.role },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      users: [...this.state.users, newUser],
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    // Async push to Supabase user_profiles & flat_residents
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('user_profiles').upsert({
+        id: newUser.id,
+        community_id: newUser.community_id,
+        full_name: newUser.full_name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: newUser.role,
+        is_active: true
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase user profile sync:', error.message);
+      });
+
+      if (params.flat_id) {
+        supabase.from('flat_residents').upsert({
+          flat_id: params.flat_id,
+          user_id: newUser.id,
+          is_primary_owner: newUser.role === 'resident',
+          is_approved: true
+        }).then(({ error }) => {
+          if (error) console.warn('Supabase flat resident sync:', error.message);
+        });
+      }
+    }
+
+    return { user: newUser };
+  }
+
+  public async updateUser(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
+    const existing = this.state.users.find(u => u.id === userId);
+    if (!existing) return null;
+
+    let flatDisplay = existing.flat_display;
+    if (updates.flat_id && updates.flat_id !== existing.flat_id) {
+      const flat = this.state.flats.find(f => f.id === updates.flat_id);
+      if (flat) {
+        flatDisplay = `${flat.block_name || 'Tower A'} • Floor ${flat.floor_number} • Flat ${flat.flat_number}`;
+      }
+    }
+
+    const updated: UserProfile = {
+      ...existing,
+      ...updates,
+      flat_display: flatDisplay,
+      owned_flat_ids: updates.flat_id ? [updates.flat_id] : existing.owned_flat_ids
+    };
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'UPDATE_USER',
+      entity_type: 'user_profiles',
+      entity_id: userId,
+      metadata: { updates },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      users: this.state.users.map(u => u.id === userId ? updated : u),
+      currentUser: this.state.currentUser.id === userId ? updated : this.state.currentUser,
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    // Async push to Supabase
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('user_profiles').update({
+        full_name: updated.full_name,
+        phone: updated.phone,
+        role: updated.role,
+        is_active: updated.is_active
+      }).eq('id', userId).then(({ error }) => {
+        if (error) console.warn('Supabase update user error:', error.message);
+      });
+    }
+
+    return updated;
+  }
+
+  public async deleteUser(userId: string): Promise<boolean> {
+    const target = this.state.users.find(u => u.id === userId);
+    if (!target) return false;
+
+    // Safety: Cannot delete current logged in user
+    if (this.state.currentUser.id === userId) {
+      return false;
+    }
+
+    const newLog: AuditLog = {
+      id: generateUUID(),
+      community_id: this.state.currentCommunity.id,
+      actor_id: this.state.currentUser.id,
+      actor_name: this.state.currentUser.full_name,
+      actor_role: this.state.currentUser.role,
+      action: 'DELETE_USER',
+      entity_type: 'user_profiles',
+      entity_id: userId,
+      metadata: { email: target.email, role: target.role, name: target.full_name },
+      created_at: new Date().toISOString()
+    };
+
+    this.state = {
+      ...this.state,
+      users: this.state.users.filter(u => u.id !== userId),
+      auditLogs: [newLog, ...this.state.auditLogs]
+    };
+
+    this.saveToStorage(this.state);
+    this.notify();
+
+    // Async delete from Supabase
+    if (isSupabaseConfigured && supabase) {
+      const client = supabase;
+      client.from('flat_residents').delete().eq('user_id', userId).then(() => {
+        client.from('user_profiles').delete().eq('id', userId).then(({ error }) => {
+          if (error) console.warn('Supabase delete user error:', error.message);
+        });
+      });
+    }
+
     return true;
   }
 }

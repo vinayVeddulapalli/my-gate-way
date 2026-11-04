@@ -18,16 +18,21 @@ import {
   AlertCircle,
   Wifi,
   Copy,
-  ExternalLink
+  UserPlus,
+  LogIn
 } from 'lucide-react';
 import { appStore } from '@/lib/store';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { UserRole } from '@/types';
 
 type PortalTab = 'resident' | 'guard' | 'admin' | 'superadmin';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Mode: Sign In vs Self-Registration
+  const [authMode, setAuthMode] = useState<'signin' | 'register'>('signin');
 
   // Initial tab from query parameter (e.g. /login?portal=guard or /login?tab=admin)
   const initialTab = (searchParams.get('portal') || searchParams.get('tab') || 'resident') as PortalTab;
@@ -39,31 +44,40 @@ function LoginForm() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showCheatSheet, setShowCheatSheet] = useState(true);
+  const [showCheatSheet, setShowCheatSheet] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Resident Form State
-  const [residentEmail, setResidentEmail] = useState('owner@gatewaysecurity.in');
-  const [residentPassword, setResidentPassword] = useState('Owner@123');
+  const [residentEmail, setResidentEmail] = useState('');
+  const [residentPassword, setResidentPassword] = useState('');
   const [useOtpMode, setUseOtpMode] = useState(false);
   const [residentPhone, setResidentPhone] = useState('+91 98111 22334');
   const [residentOtpSent, setResidentOtpSent] = useState(false);
   const [residentOtp, setResidentOtp] = useState('1234');
 
   // Guard Form State
-  const [guardEmail, setGuardEmail] = useState('guard@gatewaysecurity.in');
-  const [guardPassword, setGuardPassword] = useState('Guard@123');
+  const [guardEmail, setGuardEmail] = useState('');
+  const [guardPassword, setGuardPassword] = useState('');
   const [selectedGate, setSelectedGate] = useState('b0000000-0000-0000-0000-000000000001');
 
   // Admin Form State
-  const [adminEmail, setAdminEmail] = useState('admin@gatewaysecurity.in');
-  const [adminPassword, setAdminPassword] = useState('Admin@123');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
   // Superadmin Form State
-  const [superEmail, setSuperEmail] = useState('superadmin@gatewaysecurity.in');
-  const [superPassword, setSuperPassword] = useState('Super@123');
+  const [superEmail, setSuperEmail] = useState('');
+  const [superPassword, setSuperPassword] = useState('');
+
+  // Registration Form State (Self-service user creation)
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regPhone, setRegPhone] = useState('+91 ');
+  const [regRole, setRegRole] = useState<UserRole>('resident');
+  const [regFlatId, setRegFlatId] = useState('');
 
   const state = appStore.getState();
+  const flats = state.flats;
 
   // Sync tab if URL param changes
   useEffect(() => {
@@ -72,6 +86,12 @@ function LoginForm() {
       setActiveTab(tabParam as PortalTab);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (flats.length > 0 && !regFlatId) {
+      setRegFlatId(flats[0].id);
+    }
+  }, [flats, regFlatId]);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
@@ -101,10 +121,9 @@ function LoginForm() {
         });
 
         if (error) {
-          // If credentials not found or unconfirmed in auth.users, provide helpful instruction
           console.warn('Supabase Auth error:', error.message);
           setAuthError(
-            `${error.message}. (Ensure you have executed migrations/09_create_auth_users.sql in your Supabase SQL Editor, or use 1-Click Entry below).`
+            `${error.message}. Check your email and password, or create an account below.`
           );
           setLoading(false);
           return;
@@ -128,7 +147,6 @@ function LoginForm() {
       }, 400);
     } catch (err) {
       console.error('Login error:', err);
-      // Fallback
       appStore.switchActiveUser(localFallbackUserId);
       router.push(redirectPath);
     } finally {
@@ -156,8 +174,8 @@ function LoginForm() {
 
     const residentUser = state.users.find(u => u.role === 'resident') || state.users[1];
     await executeSupabaseAuth(
-      residentEmail,
-      residentPassword,
+      residentEmail || residentUser.email,
+      residentPassword || 'Owner@123',
       'resident',
       '/resident',
       residentUser.id
@@ -175,8 +193,8 @@ function LoginForm() {
     e.preventDefault();
     const guardUser = state.users.find(u => u.role === 'security_guard') || state.users[0];
     await executeSupabaseAuth(
-      guardEmail,
-      guardPassword,
+      guardEmail || guardUser.email,
+      guardPassword || 'Guard@123',
       'security_guard',
       '/guard',
       guardUser.id
@@ -194,8 +212,8 @@ function LoginForm() {
     e.preventDefault();
     const adminUser = state.users.find(u => u.role === 'community_admin') || state.users[3];
     await executeSupabaseAuth(
-      adminEmail,
-      adminPassword,
+      adminEmail || adminUser.email,
+      adminPassword || 'Admin@123',
       'community_admin',
       '/admin',
       adminUser.id
@@ -213,8 +231,8 @@ function LoginForm() {
     e.preventDefault();
     const superUser = state.users.find(u => u.role === 'super_admin') || state.users[4];
     await executeSupabaseAuth(
-      superEmail,
-      superPassword,
+      superEmail || superUser.email,
+      superPassword || 'Super@123',
       'super_admin',
       '/super-admin',
       superUser.id
@@ -225,6 +243,55 @@ function LoginForm() {
     const superUser = state.users.find(u => u.role === 'super_admin') || state.users[4];
     appStore.switchActiveUser(superUser.id);
     router.push('/super-admin');
+  };
+
+  // 5. SELF-SERVICE REGISTRATION HANDLER
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || !regEmail.trim() || !regPassword.trim() || !regPhone.trim()) {
+      setAuthError('Please fill in Name, Email, Password, and Mobile Phone.');
+      return;
+    }
+
+    if (regPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setLoading(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    const res = await appStore.createUser({
+      full_name: regName,
+      email: regEmail,
+      password: regPassword,
+      phone: regPhone,
+      role: regRole,
+      flat_id: regRole === 'resident' ? regFlatId : undefined
+    });
+
+    setLoading(false);
+
+    if (res.error) {
+      setAuthError(res.error);
+      return;
+    }
+
+    setAuthSuccess(`🎉 Account created for ${res.user.full_name}! Logging you in...`);
+    appStore.switchActiveUser(res.user.id);
+
+    setTimeout(() => {
+      if (res.user.role === 'security_guard') {
+        router.push('/guard');
+      } else if (res.user.role === 'resident' || res.user.role === 'family_member') {
+        router.push('/resident');
+      } else if (res.user.role === 'community_admin') {
+        router.push('/admin');
+      } else {
+        router.push('/super-admin');
+      }
+    }, 600);
   };
 
   return (
@@ -239,7 +306,7 @@ function LoginForm() {
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
-                Live Multi-Phone Realtime Testing
+                Live Multi-Phone Network Testing
               </h2>
               <p className="text-xs text-slate-500">
                 Connect your phones on the same Wi-Fi and log in as separate roles:
@@ -250,7 +317,7 @@ function LoginForm() {
             onClick={() => setShowCheatSheet(!showCheatSheet)}
             className="text-xs font-bold text-emerald-700 hover:text-emerald-800 underline cursor-pointer"
           >
-            {showCheatSheet ? 'Hide Credentials' : 'Show Credentials'}
+            {showCheatSheet ? 'Hide Demo Logins' : 'Show Demo Logins'}
           </button>
         </div>
 
@@ -275,7 +342,6 @@ function LoginForm() {
         {/* 4 Roles Credentials Grid */}
         {showCheatSheet && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs pt-1">
-            {/* Guard */}
             <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl space-y-1">
               <div className="font-extrabold text-emerald-800 flex items-center justify-between">
                 <span>1. Gate Guard</span>
@@ -285,7 +351,6 @@ function LoginForm() {
               <div className="text-[11px] text-slate-800 font-mono font-bold">Guard@123</div>
             </div>
 
-            {/* Resident */}
             <div className="p-3 bg-orange-50/60 border border-orange-200/80 rounded-2xl space-y-1">
               <div className="font-extrabold text-[#E05D44] flex items-center justify-between">
                 <span>2. Owner (B-402)</span>
@@ -295,7 +360,6 @@ function LoginForm() {
               <div className="text-[11px] text-slate-800 font-mono font-bold">Owner@123</div>
             </div>
 
-            {/* Admin */}
             <div className="p-3 bg-indigo-50/60 border border-indigo-200/80 rounded-2xl space-y-1">
               <div className="font-extrabold text-indigo-800 flex items-center justify-between">
                 <span>3. Society Admin</span>
@@ -305,7 +369,6 @@ function LoginForm() {
               <div className="text-[11px] text-slate-800 font-mono font-bold">Admin@123</div>
             </div>
 
-            {/* Super Admin */}
             <div className="p-3 bg-purple-50/60 border border-purple-200/80 rounded-2xl space-y-1">
               <div className="font-extrabold text-purple-800 flex items-center justify-between">
                 <span>4. Super Admin</span>
@@ -345,62 +408,32 @@ function LoginForm() {
           </div>
         </div>
 
-        {/* 4 Dedicated Role Selection Tabs */}
-        <div className="grid grid-cols-4 bg-slate-100/90 p-1.5 border-b border-slate-200 text-[11px] sm:text-xs font-bold">
-          {/* Tab 1: Resident */}
+        {/* Auth Mode Toggle: Sign In vs Create Account */}
+        <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 text-xs font-extrabold">
           <button
             type="button"
-            onClick={() => { setActiveTab('resident'); setAuthError(null); setAuthSuccess(null); }}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'resident'
-                ? 'bg-white text-[#E05D44] shadow-xs ring-1 ring-black/5 font-extrabold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            onClick={() => { setAuthMode('signin'); setAuthError(null); setAuthSuccess(null); }}
+            className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              authMode === 'signin'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Home className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Resident</span>
+            <LogIn className="w-3.5 h-3.5" />
+            <span>Sign In to Existing Account</span>
           </button>
 
-          {/* Tab 2: Security Guard */}
           <button
             type="button"
-            onClick={() => { setActiveTab('guard'); setAuthError(null); setAuthSuccess(null); }}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'guard'
-                ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-black/5 font-extrabold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            onClick={() => { setAuthMode('register'); setAuthError(null); setAuthSuccess(null); }}
+            className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              authMode === 'register'
+                ? 'bg-white text-emerald-700 shadow-xs'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Guard</span>
-          </button>
-
-          {/* Tab 3: Society Admin */}
-          <button
-            type="button"
-            onClick={() => { setActiveTab('admin'); setAuthError(null); setAuthSuccess(null); }}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'admin'
-                ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-black/5 font-extrabold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Admin</span>
-          </button>
-
-          {/* Tab 4: Super Admin */}
-          <button
-            type="button"
-            onClick={() => { setActiveTab('superadmin'); setAuthError(null); setAuthSuccess(null); }}
-            className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'superadmin'
-                ? 'bg-white text-purple-700 shadow-xs ring-1 ring-black/5 font-extrabold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            <Server className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Super</span>
+            <UserPlus className="w-3.5 h-3.5 text-emerald-600" />
+            <span>+ Create New Account</span>
           </button>
         </div>
 
@@ -419,82 +452,249 @@ function LoginForm() {
           </div>
         )}
 
-        <div className="p-6 sm:p-7 space-y-6">
-          {/* ========================================================================= */}
-          {/* TAB 1: RESIDENT & OWNER PORTAL */}
-          {/* ========================================================================= */}
-          {activeTab === 'resident' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
+        {/* ========================================================================= */}
+        {/* MODE A: SELF-SERVICE USER REGISTRATION */}
+        {/* ========================================================================= */}
+        {authMode === 'register' && (
+          <div className="p-6 sm:p-7 space-y-4 animate-in fade-in duration-200">
+            <div>
+              <div className="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-800 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
+                SELF-SERVICE ACCOUNT CREATION
+              </div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                Create Your Own User Account
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                Choose your role, enter your personal email and password, and sign in immediately on your phone.
+              </p>
+            </div>
+
+            <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-1">
+              {/* Role */}
               <div>
-                <div className="inline-block px-2.5 py-0.5 bg-[#FDEEEB] text-[#E05D44] text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
-                  RESIDENT & OWNER ACCESS
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Welcome to Your Home
-                </h2>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Approve visitors at the gate, issue time-limited guest passes, and switch seamlessly between your 10-flat portfolio.
-                </p>
+                <label className="text-xs font-bold text-slate-800 block mb-1">
+                  I am enrolling as:
+                </label>
+                <select
+                  value={regRole}
+                  onChange={(e) => setRegRole(e.target.value as UserRole)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-emerald-600 cursor-pointer"
+                >
+                  <option value="resident">Apartment Owner / Resident</option>
+                  <option value="security_guard">Security Guard (Gate Terminal)</option>
+                  <option value="community_admin">Society Estate Admin</option>
+                </select>
               </div>
 
-              {/* Verified Owner Showcase Card */}
-              <div className="p-4 bg-orange-50/70 border border-orange-200/70 rounded-2xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-[#E05D44] text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs">
-                    AS
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>Aarav Sharma</span>
-                      <span className="text-[10px] bg-white text-[#E05D44] px-1.5 py-0.2 rounded font-semibold border border-orange-200">
-                        Owner
-                      </span>
+              {/* Name */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 block mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="e.g. Vinay Kumar"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 block mb-1">
+                  Your Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="email"
+                    required
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="e.g. vinay@gmail.com"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 block mb-1">
+                  Choose a Password (min 6 chars)
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="text-xs font-bold text-slate-800 block mb-1">
+                  Mobile Phone Number
+                </label>
+                <div className="relative">
+                  <Smartphone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="tel"
+                    required
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+              </div>
+
+              {/* Flat Selector (If Resident) */}
+              {regRole === 'resident' && (
+                <div>
+                  <label className="text-xs font-bold text-slate-800 block mb-1">
+                    Select Your Apartment Flat
+                  </label>
+                  <select
+                    value={regFlatId}
+                    onChange={(e) => setRegFlatId(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-emerald-600 cursor-pointer"
+                  >
+                    {flats.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.block_name || 'Tower A'} • Floor {f.floor_number} • Flat {f.flat_number}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2 mt-2"
+              >
+                {loading ? (
+                  <span>Creating Account in Supabase...</span>
+                ) : (
+                  <>
+                    <span>Create Account & Sign In</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* MODE B: STANDARD SIGN IN WITH ROLE TABS */}
+        {/* ========================================================================= */}
+        {authMode === 'signin' && (
+          <>
+            {/* 4 Dedicated Role Selection Tabs */}
+            <div className="grid grid-cols-4 bg-slate-100/90 p-1.5 border-b border-slate-200 text-[11px] sm:text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('resident'); setAuthError(null); setAuthSuccess(null); }}
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'resident'
+                    ? 'bg-white text-[#E05D44] shadow-xs ring-1 ring-black/5 font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Home className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Resident</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('guard'); setAuthError(null); setAuthSuccess(null); }}
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'guard'
+                    ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-black/5 font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Guard</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('admin'); setAuthError(null); setAuthSuccess(null); }}
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'admin'
+                    ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-black/5 font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Admin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('superadmin'); setAuthError(null); setAuthSuccess(null); }}
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'superadmin'
+                    ? 'bg-white text-purple-700 shadow-xs ring-1 ring-black/5 font-extrabold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Server className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Super</span>
+              </button>
+            </div>
+
+            <div className="p-6 sm:p-7 space-y-6">
+              {/* TAB 1: RESIDENT */}
+              {activeTab === 'resident' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-[#FDEEEB] text-[#E05D44] text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
+                      RESIDENT & OWNER ACCESS
                     </div>
-                    <p className="text-[11px] text-slate-600 truncate">
-                      Flat 1204 (Primary) • 10-Flat Portfolio
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Welcome to Your Home
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Approve gate visitors, issue guest passes, and oversee your apartment units.
                     </p>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleQuickSignInResident}
-                  className="px-3 py-1.5 bg-[#E05D44] hover:bg-[#c94d35] text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <span>1-Click Entry</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                  {/* 1-Click Entry Pill */}
+                  <div className="p-3 bg-orange-50/70 border border-orange-200/70 rounded-2xl flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <button
+                      type="button"
+                      onClick={handleQuickSignInResident}
+                      className="px-3 py-1.5 bg-[#E05D44] hover:bg-[#c94d35] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>1-Click Entry</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
 
-              {/* Login mode toggle */}
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setUseOtpMode(!useOtpMode)}
-                  className="text-xs text-[#E05D44] hover:underline font-bold"
-                >
-                  {useOtpMode ? 'Switch to Email / Password' : 'Login with Mobile OTP instead'}
-                </button>
-              </div>
-
-              {/* Form: Email/Password or Phone/OTP */}
-              <form onSubmit={handleResidentSubmit} className="space-y-4">
-                {!useOtpMode ? (
-                  <>
+                  <form onSubmit={handleResidentSubmit} className="space-y-4">
                     <div>
                       <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                        Resident Email
+                        Your Registered Email
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                          <Mail className="w-4 h-4" />
-                        </div>
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                         <input
                           type="email"
                           value={residentEmail}
                           onChange={(e) => setResidentEmail(e.target.value)}
-                          placeholder="owner@gatewaysecurity.in"
-                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-[#E05D44] transition-all"
+                          placeholder="owner@gatewaysecurity.in (or your own email)"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-[#E05D44]"
                         />
                       </div>
                     </div>
@@ -504,408 +704,243 @@ function LoginForm() {
                         Password
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                          <Lock className="w-4 h-4" />
-                        </div>
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                         <input
                           type="password"
                           value={residentPassword}
                           onChange={(e) => setResidentPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-[#E05D44] transition-all"
+                          placeholder="Your account password"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-[#E05D44]"
                         />
                       </div>
                     </div>
-                  </>
-                ) : (
-                  <>
-                    {!residentOtpSent ? (
-                      <div>
-                        <label className="text-xs font-bold text-slate-800 block mb-1.5 flex items-center justify-between">
-                          <span>Registered Mobile Number</span>
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <Smartphone className="w-4 h-4" />
-                          </div>
-                          <input
-                            type="tel"
-                            value={residentPhone}
-                            onChange={(e) => setResidentPhone(e.target.value)}
-                            placeholder="+91 98111 22334"
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-[#E05D44]"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="text-xs font-bold text-slate-800 block mb-1.5 flex items-center justify-between">
-                          <span>4-Digit Verification Code</span>
-                          <span className="text-[10px] text-emerald-600 font-bold">Auto-generated</span>
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <KeyRound className="w-4 h-4" />
-                          </div>
-                          <input
-                            type="text"
-                            value={residentOtp}
-                            onChange={(e) => setResidentOtp(e.target.value)}
-                            maxLength={4}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-lg font-bold tracking-widest text-slate-900 focus:ring-2 focus:ring-[#E05D44]"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-[#E05D44] hover:bg-[#c94d35] text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <span>Authenticating...</span>
-                  ) : (
-                    <>
-                      <span>Sign In to Resident Portal</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 2: SECURITY GUARD TERMINAL */}
-          {/* ========================================================================= */}
-          {activeTab === 'guard' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div>
-                <div className="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
-                  SECURITY GATE TERMINAL
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Gate Kiosk Terminal
-                </h2>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Touch-friendly guard interface for capturing visitor photos, verifying pre-approved guest passes, and logging daily help.
-                </p>
-              </div>
-
-              {/* Stationed Guard Showcase Card */}
-              <div className="p-4 bg-emerald-50/70 border border-emerald-200/70 rounded-2xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>Ramesh Kumar</span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-semibold border border-emerald-300">
-                        Duty Guard
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 truncate">
-                      Main North Gate 1 • Active Duty Shift
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleQuickSignInGuard}
-                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <span>1-Click Entry</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Guard Login Form */}
-              <form onSubmit={handleGuardSubmit} className="space-y-4 pt-1">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Stationed Gate Location
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <MapPin className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <select
-                      value={selectedGate}
-                      onChange={(e) => setSelectedGate(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600 appearance-none cursor-pointer"
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3.5 bg-[#E05D44] hover:bg-[#c94d35] text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
-                      {state.gates.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      {loading ? <span>Authenticating...</span> : <><span>Sign In to Resident Portal</span><ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
                 </div>
+              )}
 
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Guard Official Email
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="w-4 h-4" />
+              {/* TAB 2: GUARD */}
+              {activeTab === 'guard' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
+                      SECURITY GATE TERMINAL
                     </div>
-                    <input
-                      type="email"
-                      value={guardEmail}
-                      onChange={(e) => setGuardEmail(e.target.value)}
-                      placeholder="guard@gatewaysecurity.in"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Gate Terminal Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="password"
-                      value={guardPassword}
-                      onChange={(e) => setGuardPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <span>Opening Gate Terminal...</span>
-                  ) : (
-                    <>
-                      <span>Start Shift at Gate Kiosk</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 3: SOCIETY ADMIN CONSOLE */}
-          {/* ========================================================================= */}
-          {activeTab === 'admin' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div>
-                <div className="inline-block px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
-                  COMMUNITY ADMIN CONSOLE
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Estate Management Office
-                </h2>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Oversee society occupancy, review live gate logs, download compliance CSV exports, and manage flat allocations.
-                </p>
-              </div>
-
-              {/* Verified Estate Manager Showcase Card */}
-              <div className="p-4 bg-indigo-50/70 border border-indigo-200/70 rounded-2xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>Rajesh Iyer</span>
-                      <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded font-semibold border border-indigo-300">
-                        Estate Mgr
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 truncate">
-                      Palm Meadows Society Management Office
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Gate Kiosk Terminal
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Touch interface for camera photo capture, visitor passes, and daily staff.
                     </p>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleQuickSignInAdmin}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <span>1-Click Entry</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Admin Email & Password Form */}
-              <form onSubmit={handleAdminSubmit} className="space-y-4 pt-1">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Official Admin Work Email
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="email"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="admin@gatewaysecurity.in"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-indigo-600"
-                    />
+                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-2xl flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <button
+                      type="button"
+                      onClick={handleQuickSignInGuard}
+                      className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>1-Click Entry</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Master Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-4 h-4" />
+                  <form onSubmit={handleGuardSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                        Guard Login Email
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                        <input
+                          type="email"
+                          value={guardEmail}
+                          onChange={(e) => setGuardEmail(e.target.value)}
+                          placeholder="guard@gatewaysecurity.in (or your guard email)"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="password"
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-indigo-600"
-                    />
-                  </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <span>Verifying Credentials...</span>
-                  ) : (
-                    <>
-                      <span>Open Management Console</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 4: SUPER ADMIN PLATFORM CONSOLE */}
-          {/* ========================================================================= */}
-          {activeTab === 'superadmin' && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div>
-                <div className="inline-block px-2.5 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
-                  PLATFORM SUPER ADMIN
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Multi-Society Master Operations
-                </h2>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Global tenant provisioning, multi-estate database isolation, infrastructure health, and master audits.
-                </p>
-              </div>
-
-              {/* Verified Super Admin Showcase Card */}
-              <div className="p-4 bg-purple-50/70 border border-purple-200/70 rounded-2xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-xs">
-                    <Server className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>Dev Administrator</span>
-                      <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded font-semibold border border-purple-300">
-                        Super Admin
-                      </span>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                        <input
+                          type="password"
+                          value={guardPassword}
+                          onChange={(e) => setGuardPassword(e.target.value)}
+                          placeholder="Your guard password"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-600"
+                        />
+                      </div>
                     </div>
-                    <p className="text-[11px] text-slate-600 truncate">
-                      Multi-Tenant Infrastructure Node
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {loading ? <span>Authenticating...</span> : <><span>Start Shift at Gate Kiosk</span><ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* TAB 3: ADMIN */}
+              {activeTab === 'admin' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
+                      COMMUNITY ADMIN CONSOLE
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Estate Management Office
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Manage society flats, enrolled staff, security bans, and visitor compliance.
                     </p>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleQuickSignInSuper}
-                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
-                >
-                  <span>1-Click Entry</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Super Admin Email & Password Form */}
-              <form onSubmit={handleSuperSubmit} className="space-y-4 pt-1">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Super Admin Root Email
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="email"
-                      value={superEmail}
-                      onChange={(e) => setSuperEmail(e.target.value)}
-                      placeholder="superadmin@gatewaysecurity.in"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-purple-600"
-                    />
+                  <div className="p-3 bg-indigo-50/70 border border-indigo-200/70 rounded-2xl flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <button
+                      type="button"
+                      onClick={handleQuickSignInAdmin}
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>1-Click Entry</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-800 block mb-1.5">
-                    Root Security Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-4 h-4" />
+                  <form onSubmit={handleAdminSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                        Admin Email
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                        <input
+                          type="email"
+                          value={adminEmail}
+                          onChange={(e) => setAdminEmail(e.target.value)}
+                          placeholder="admin@gatewaysecurity.in"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-indigo-600"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="password"
-                      value={superPassword}
-                      onChange={(e) => setSuperPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-purple-600"
-                    />
-                  </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <span>Authenticating Root Access...</span>
-                  ) : (
-                    <>
-                      <span>Open Super Admin Console</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                        <input
+                          type="password"
+                          value={adminPassword}
+                          onChange={(e) => setAdminPassword(e.target.value)}
+                          placeholder="Your admin password"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-indigo-600"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {loading ? <span>Verifying...</span> : <><span>Open Management Console</span><ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* TAB 4: SUPER ADMIN */}
+              {activeTab === 'superadmin' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  <div>
+                    <div className="inline-block px-2.5 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-black uppercase tracking-wider rounded-md mb-2">
+                      PLATFORM SUPER ADMIN
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Master Platform Operations
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Multi-tenant community oversight, PostgreSQL partitions, and telemetry.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-purple-50/70 border border-purple-200/70 rounded-2xl flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-700 font-semibold">Testing Demo Profile</span>
+                    <button
+                      type="button"
+                      onClick={handleQuickSignInSuper}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>1-Click Entry</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSuperSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                        Super Admin Email
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                        <input
+                          type="email"
+                          value={superEmail}
+                          onChange={(e) => setSuperEmail(e.target.value)}
+                          placeholder="superadmin@gatewaysecurity.in"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-purple-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 block mb-1.5">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                        <input
+                          type="password"
+                          value={superPassword}
+                          onChange={(e) => setSuperPassword(e.target.value)}
+                          placeholder="Your root password"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 font-medium focus:ring-2 focus:ring-purple-600"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {loading ? <span>Authenticating Root...</span> : <><span>Open Super Admin Console</span><ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         {/* Global Footer info bar */}
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
@@ -914,13 +949,7 @@ function LoginForm() {
             <span>Supabase Cloud Auth & RLS</span>
           </span>
           <span className="font-semibold text-slate-600">
-            {activeTab === 'resident'
-              ? 'Resident Portal'
-              : activeTab === 'guard'
-              ? 'Gate Kiosk'
-              : activeTab === 'admin'
-              ? 'Estate Admin'
-              : 'Super Admin'}
+            {authMode === 'register' ? 'Self-Registration' : 'Secure Login'}
           </span>
         </div>
       </div>
