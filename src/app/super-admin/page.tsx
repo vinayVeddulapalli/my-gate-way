@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { appStore, AppState } from '@/lib/store';
-import { UserProfile, UserRole } from '@/types';
+import { appStore, AppState, generateUUID } from '@/lib/store';
+import { UserProfile, UserRole, Flat, Community } from '@/types';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { 
   Building2, 
   ShieldCheck, 
@@ -29,7 +30,11 @@ import {
   UserCheck,
   Lock,
   Mail,
-  Phone
+  Phone,
+  PlusCircle,
+  Layers,
+  MapPin,
+  Compass
 } from 'lucide-react';
 
 export default function SuperAdminPage() {
@@ -42,10 +47,27 @@ export default function SuperAdminPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('Pass@123');
   const [formRole, setFormRole] = useState<UserRole>('security_guard');
-  const [formResidentType, setFormResidentType] = useState<'owner' | 'tenant'>('owner');
   const [formPhone, setFormPhone] = useState('+91 ');
+  
+  // Flat State & Custom Options
   const [formFlatId, setFormFlatId] = useState('');
+  const [customBlockName, setCustomBlockName] = useState('Tower D');
+  const [customFloorNumber, setCustomFloorNumber] = useState('14');
+  const [customFlatNumber, setCustomFlatNumber] = useState('1402');
+
+  // Community State & Custom Options
   const [formCommunityId, setFormCommunityId] = useState('');
+  const [customCommName, setCustomCommName] = useState('Prestige Lakeside Habitat');
+  const [customCommCode, setCustomCommCode] = useState('PLH-BLR');
+  const [customCommCity, setCustomCommCity] = useState('Bengaluru');
+
+  // Role Customization State
+  const [formResidentType, setFormResidentType] = useState<'owner' | 'tenant' | 'family' | 'custom'>('owner');
+  const [customResidentType, setCustomResidentType] = useState('Corporate Leaseholder');
+  const [guardGateOption, setGuardGateOption] = useState<'main' | 'service' | 'pedestrian' | 'custom'>('main');
+  const [customGateName, setCustomGateName] = useState('North Logistics Gate Desk');
+  const [adminDesignation, setAdminDesignation] = useState<'estate_manager' | 'security_supervisor' | 'facility_head' | 'rwa_board' | 'custom'>('estate_manager');
+  const [customAdminTitle, setCustomAdminTitle] = useState('Chief Security Officer');
 
   // UI State
   const [showPassword, setShowPassword] = useState(false);
@@ -59,6 +81,50 @@ export default function SuperAdminPage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [directoryFilter, setDirectoryFilter] = useState<'all' | 'guards' | 'owners' | 'tenants' | 'admins'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Preset Communities List
+  const [communitiesList, setCommunitiesList] = useState([
+    {
+      id: 'a0000000-0000-0000-0000-000000000001',
+      name: 'Palm Meadows',
+      code: 'PM-BLR',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      units: '1,420 Units',
+      gates: '3 Gates',
+      status: 'Active (Current Tenant)'
+    },
+    {
+      id: 'comm-2',
+      name: 'Sobha Dream Acres',
+      code: 'SDA-BLR',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      units: '6,500 Units',
+      gates: '6 Gates',
+      status: 'Active'
+    },
+    {
+      id: 'comm-3',
+      name: 'Godrej Woods',
+      code: 'GW-NOIDA',
+      city: 'Noida',
+      state: 'Uttar Pradesh',
+      units: '980 Units',
+      gates: '2 Gates',
+      status: 'Active'
+    },
+    {
+      id: 'comm-4',
+      name: 'DLF Magnolias',
+      code: 'DLF-GGN',
+      city: 'Gurugram',
+      state: 'Haryana',
+      units: '589 Units',
+      gates: '4 Gates',
+      status: 'Active'
+    }
+  ]);
 
   useEffect(() => {
     setMounted(true);
@@ -103,9 +169,127 @@ export default function SuperAdminPage() {
     const cleanEmail = formEmail.trim().toLowerCase();
 
     try {
-      // 1. Try server-side Supabase API route for robust Auth & DB persistence
+      // 1. Resolve Target Community (Custom vs Preset)
+      let resolvedCommunityId = formCommunityId;
+      if (formCommunityId === 'custom') {
+        const customCommId = 'a' + generateUUID().slice(1);
+        const newComm = {
+          id: customCommId,
+          name: customCommName.trim() || 'Custom Residential Community',
+          code: (customCommCode.trim() || 'CUST-SOC').toUpperCase(),
+          city: customCommCity.trim() || 'Bengaluru',
+          state: 'Karnataka',
+          units: 'New Sector',
+          gates: '2 Gates',
+          status: 'Custom Provisioned'
+        };
+        setCommunitiesList((prev) => [...prev, newComm]);
+        resolvedCommunityId = customCommId;
+
+        // Push to Supabase communities table if configured
+        if (isSupabaseConfigured && supabase) {
+          try {
+            await supabase.from('communities').upsert({
+              id: customCommId,
+              name: newComm.name,
+              code: newComm.code,
+              city: newComm.city,
+              state: newComm.state,
+              address: 'Custom Community Campus',
+              pincode: '560001',
+              emergency_police: '100',
+              emergency_ambulance: '108',
+              emergency_fire: '101',
+              estate_manager_phone: formPhone.trim() || '+91 99999 99999'
+            });
+          } catch (cErr) {
+            console.warn('Supabase community sync notice:', cErr);
+          }
+        }
+      }
+
+      // 2. Resolve Flat Assignment (Custom vs Preset)
+      let resolvedFlatId: string | undefined = undefined;
+      let resolvedFlatDisplay: string | undefined = undefined;
+      let customFlatPayload: Partial<Flat> | undefined = undefined;
+
+      if (formRole === 'resident') {
+        if (formFlatId === 'custom') {
+          const newFlatId = 'd' + generateUUID().slice(1);
+          const blockName = customBlockName.trim() || 'Tower A';
+          const flatNum = customFlatNumber.trim() || '101';
+          const floorNum = Number(customFloorNumber) || 1;
+
+          const newFlat: Flat = {
+            id: newFlatId,
+            community_id: resolvedCommunityId,
+            block_id: 'c0000000-0000-0000-0000-000000000001',
+            block_name: blockName,
+            flat_number: flatNum,
+            floor_number: floorNum,
+            intercom_number: flatNum,
+            is_occupied: true,
+            occupancy_type: formResidentType === 'tenant' ? 'rented' : 'self_occupied',
+            owner_name: formResidentType === 'owner' ? formName.trim() : undefined,
+            tenant_name: formResidentType === 'tenant' ? formName.trim() : undefined,
+            tenant_phone: formResidentType === 'tenant' ? formPhone.trim() : undefined,
+            monthly_rent: 35000,
+            maintenance_amount: 5000,
+            maintenance_status: 'paid'
+          };
+
+          // Register in local appStore
+          appStore.addFlat(newFlat);
+          resolvedFlatId = newFlatId;
+          resolvedFlatDisplay = `${blockName} • Floor ${floorNum} • Flat ${flatNum}`;
+          customFlatPayload = newFlat;
+
+          // Push to Supabase flats table
+          if (isSupabaseConfigured && supabase) {
+            try {
+              await supabase.from('flats').upsert({
+                id: newFlat.id,
+                community_id: resolvedCommunityId,
+                block_id: newFlat.block_id,
+                flat_number: newFlat.flat_number,
+                floor_number: newFlat.floor_number,
+                intercom_number: newFlat.intercom_number,
+                is_occupied: true
+              });
+            } catch (fErr) {
+              console.warn('Supabase custom flat sync notice:', fErr);
+            }
+          }
+        } else {
+          resolvedFlatId = formFlatId;
+          const matched = state.flats.find(f => f.id === formFlatId);
+          if (matched) {
+            resolvedFlatDisplay = `${matched.block_name || 'Tower A'} • Floor ${matched.floor_number} • Flat ${matched.flat_number}`;
+          }
+        }
+      } else if (formRole === 'security_guard') {
+        if (guardGateOption === 'main') resolvedFlatDisplay = 'Main Gate 1 Kiosk (Vehicles & Visitors)';
+        else if (guardGateOption === 'service') resolvedFlatDisplay = 'South Service Gate 2 (Deliveries & Logistics)';
+        else if (guardGateOption === 'pedestrian') resolvedFlatDisplay = 'Pedestrian Turnstile Gate';
+        else resolvedFlatDisplay = customGateName.trim() || 'Custom Gate Kiosk Terminal';
+      } else if (formRole === 'community_admin') {
+        if (adminDesignation === 'estate_manager') resolvedFlatDisplay = 'Estate Manager (Operations Office)';
+        else if (adminDesignation === 'security_supervisor') resolvedFlatDisplay = 'Security Supervisor (Control Room)';
+        else if (adminDesignation === 'facility_head') resolvedFlatDisplay = 'Facilities & Maintenance Head';
+        else if (adminDesignation === 'rwa_board') resolvedFlatDisplay = 'RWA Managing Committee';
+        else resolvedFlatDisplay = customAdminTitle.trim() || 'Estate Management Office';
+      } else if (formRole === 'super_admin') {
+        resolvedFlatDisplay = 'Global Platform Administrator';
+      }
+
+      // 3. Resolve Resident Occupant Type
+      const resolvedResidentType: 'owner' | 'tenant' | 'family' = 
+        formResidentType === 'tenant' ? 'tenant' 
+        : formResidentType === 'family' ? 'family' 
+        : 'owner';
+
+      // 4. Try server-side Supabase API route for robust Auth & DB persistence
       let apiSuccess = false;
-      
       try {
         const res = await fetch('/api/admin/create-user', {
           method: 'POST',
@@ -116,9 +300,11 @@ export default function SuperAdminPage() {
             password: formPassword.trim(),
             phone: formPhone.trim() || '+91 99999 99999',
             role: formRole,
-            resident_type: formRole === 'resident' ? formResidentType : undefined,
-            flat_id: formRole === 'resident' ? formFlatId : undefined,
-            community_id: formCommunityId || state.currentCommunity.id
+            resident_type: formRole === 'resident' ? resolvedResidentType : undefined,
+            flat_id: resolvedFlatId,
+            flat_display: resolvedFlatDisplay,
+            community_id: resolvedCommunityId,
+            custom_flat: customFlatPayload
           })
         });
 
@@ -132,16 +318,17 @@ export default function SuperAdminPage() {
         console.warn('API route call fallback to client store:', apiErr);
       }
 
-      // 2. Synchronize to local reactive state store
+      // 5. Synchronize to local reactive state store
       const localResult = await appStore.createUser({
         full_name: formName.trim(),
         email: cleanEmail,
         phone: formPhone.trim() || '+91 99999 99999',
         role: formRole,
-        resident_type: formRole === 'resident' ? formResidentType : undefined,
-        flat_id: formRole === 'resident' ? formFlatId : undefined,
+        resident_type: formRole === 'resident' ? resolvedResidentType : undefined,
+        flat_id: resolvedFlatId,
+        flat_display: resolvedFlatDisplay,
         password: formPassword.trim(),
-        community_id: formCommunityId || state.currentCommunity.id
+        community_id: resolvedCommunityId
       });
 
       if (localResult.error && !apiSuccess) {
@@ -158,7 +345,7 @@ export default function SuperAdminPage() {
         supabaseSynced: true
       });
 
-      // Reset form fields
+      // Reset standard fields
       setFormName('');
       setFormEmail('');
       setFormPassword('Pass@123');
@@ -209,49 +396,6 @@ export default function SuperAdminPage() {
   const tenantsCount = state.users.filter(u => u.role === 'resident' && u.resident_type === 'tenant').length;
   const adminsCount = state.users.filter(u => u.role === 'community_admin' || u.role === 'super_admin').length;
 
-  const communities = [
-    {
-      id: state.currentCommunity.id,
-      name: state.currentCommunity.name,
-      code: state.currentCommunity.code,
-      city: state.currentCommunity.city,
-      state: state.currentCommunity.state,
-      units: '1,420 Units',
-      gates: '3 Gates',
-      status: 'Active (Current Tenant)'
-    },
-    {
-      id: 'comm-2',
-      name: 'Sobha Dream Acres',
-      code: 'SDA-BLR',
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      units: '6,500 Units',
-      gates: '6 Gates',
-      status: 'Active'
-    },
-    {
-      id: 'comm-3',
-      name: 'Godrej Woods',
-      code: 'GW-NOIDA',
-      city: 'Noida',
-      state: 'Uttar Pradesh',
-      units: '980 Units',
-      gates: '2 Gates',
-      status: 'Active'
-    },
-    {
-      id: 'comm-4',
-      name: 'DLF Magnolias',
-      code: 'DLF-GGN',
-      city: 'Gurugram',
-      state: 'Haryana',
-      units: '589 Units',
-      gates: '4 Gates',
-      status: 'Active'
-    }
-  ];
-
   // Prevent SSR hydration mismatch
   if (!mounted) {
     return (
@@ -283,7 +427,7 @@ export default function SuperAdminPage() {
             Super Admin Management Console
           </h1>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-            Provision user credentials directly into Supabase Auth (<code className="text-amber-300">auth.users</code>) and society databases (<code className="text-amber-300">user_profiles</code>). Instant real-time role-based access.
+            Provision user credentials directly into Supabase Auth (<code className="text-amber-300">auth.users</code>) and society databases (<code className="text-amber-300">user_profiles</code>). Instant real-time role-based access with custom fields.
           </p>
         </div>
 
@@ -356,7 +500,7 @@ export default function SuperAdminPage() {
                 </span>
               </h2>
               <p className="text-xs text-slate-300">
-                Creates confirmed login credentials in Supabase Auth and registers profile in PostgreSQL.
+                Creates confirmed login credentials in Supabase Auth and registers profile in PostgreSQL with custom units and communities.
               </p>
             </div>
           </div>
@@ -459,7 +603,7 @@ export default function SuperAdminPage() {
                 required
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Vikram Singhania"
+                placeholder="e.g. Vinay Veddulapalli"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900"
               />
             </div>
@@ -475,7 +619,7 @@ export default function SuperAdminPage() {
                   required
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
-                  placeholder="e.g. vikram.guard@gatewaysecurity.in"
+                  placeholder="e.g. vinay@gatewaysecurity.in"
                   className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 font-mono"
                 />
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -534,7 +678,7 @@ export default function SuperAdminPage() {
               </select>
             </div>
 
-            {/* Resident Occupant Type (Owner vs Tenant) */}
+            {/* Resident Occupancy Type (With Custom Option) */}
             {formRole === 'resident' && (
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -542,32 +686,159 @@ export default function SuperAdminPage() {
                 </label>
                 <select
                   value={formResidentType}
-                  onChange={(e) => setFormResidentType(e.target.value as 'owner' | 'tenant')}
+                  onChange={(e) => setFormResidentType(e.target.value as 'owner' | 'tenant' | 'family' | 'custom')}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
                 >
                   <option value="owner">Property Owner (Landlord / Master Access)</option>
                   <option value="tenant">Tenant / Renter (Occupant Approval Access)</option>
+                  <option value="family">Family Member / Co-Resident</option>
+                  <option value="custom">➕ Custom Occupant Title (Type Custom)...</option>
                 </select>
+                {formResidentType === 'custom' && (
+                  <input
+                    type="text"
+                    value={customResidentType}
+                    onChange={(e) => setCustomResidentType(e.target.value)}
+                    placeholder="e.g. Corporate Leaseholder / Guest"
+                    className="mt-2 w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
+                  />
+                )}
               </div>
             )}
 
-            {/* Flat Assignment (If Resident) */}
-            {formRole === 'resident' && (
+            {/* Guard Gate Terminal Assignment (With Custom Option) */}
+            {formRole === 'security_guard' && (
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Assigned Flat / Unit *
+                  Gate Terminal / Kiosk Desk *
                 </label>
+                <select
+                  value={guardGateOption}
+                  onChange={(e) => setGuardGateOption(e.target.value as 'main' | 'service' | 'pedestrian' | 'custom')}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
+                >
+                  <option value="main">Main Gate 1 Kiosk (Vehicles & Visitors)</option>
+                  <option value="service">South Service Gate 2 (Deliveries & Logistics)</option>
+                  <option value="pedestrian">Pedestrian Turnstile Gate</option>
+                  <option value="custom">➕ Custom Gate / Desk (Type Name)...</option>
+                </select>
+                {guardGateOption === 'custom' && (
+                  <input
+                    type="text"
+                    value={customGateName}
+                    onChange={(e) => setCustomGateName(e.target.value)}
+                    placeholder="e.g. North Gate Express Logistics Desk"
+                    className="mt-2 w-full px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Community Admin Office Designation (With Custom Option) */}
+            {formRole === 'community_admin' && (
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Estate Office / Designation *
+                </label>
+                <select
+                  value={adminDesignation}
+                  onChange={(e) => setAdminDesignation(e.target.value as 'estate_manager' | 'security_supervisor' | 'facility_head' | 'rwa_board' | 'custom')}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
+                >
+                  <option value="estate_manager">Estate Manager (Operations & Security)</option>
+                  <option value="security_supervisor">Security Supervisor (Shift Commander)</option>
+                  <option value="facility_head">Facilities & Maintenance Lead</option>
+                  <option value="rwa_board">RWA Committee / Board Member</option>
+                  <option value="custom">➕ Custom Office / Title...</option>
+                </select>
+                {adminDesignation === 'custom' && (
+                  <input
+                    type="text"
+                    value={customAdminTitle}
+                    onChange={(e) => setCustomAdminTitle(e.target.value)}
+                    placeholder="e.g. Chief Security Officer"
+                    className="mt-2 w-full px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Flat Assignment (If Resident - With Custom Option) */}
+            {formRole === 'resident' && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Assigned Flat / Unit *
+                  </label>
+                  {formFlatId === 'custom' && (
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                      Custom Mode
+                    </span>
+                  )}
+                </div>
                 <select
                   value={formFlatId}
                   onChange={(e) => setFormFlatId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
                 >
-                  {state.flats.map((flat) => (
-                    <option key={flat.id} value={flat.id}>
-                      {flat.block_name || 'Tower A'} • Floor {flat.floor_number} • Flat {flat.flat_number}
+                  <optgroup label="Preset Society Units">
+                    {state.flats.map((flat) => (
+                      <option key={flat.id} value={flat.id}>
+                        {flat.block_name || 'Tower A'} • Floor {flat.floor_number} • Flat {flat.flat_number}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Custom Option">
+                    <option value="custom" className="font-bold text-blue-700 bg-blue-50">
+                      ➕ Custom Flat / Unit (Type Any Block & Number)...
                     </option>
-                  ))}
+                  </optgroup>
                 </select>
+
+                {/* Custom Flat Inputs Sub-card */}
+                {formFlatId === 'custom' && (
+                  <div className="mt-2 p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2 text-xs animate-in fade-in duration-150">
+                    <div className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
+                      <Home className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Custom Flat Details</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Block / Tower</label>
+                        <input
+                          type="text"
+                          value={customBlockName}
+                          onChange={(e) => setCustomBlockName(e.target.value)}
+                          placeholder="e.g. Tower D"
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Floor</label>
+                        <input
+                          type="number"
+                          value={customFloorNumber}
+                          onChange={(e) => setCustomFloorNumber(e.target.value)}
+                          placeholder="14"
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Flat No.</label>
+                        <input
+                          type="text"
+                          value={customFlatNumber}
+                          onChange={(e) => setCustomFlatNumber(e.target.value)}
+                          placeholder="1402"
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium font-bold"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-blue-700 font-mono">
+                      Preview: <span className="font-bold">{customBlockName || 'Tower A'} • Floor {customFloorNumber || 1} • Flat {customFlatNumber || '101'}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -588,29 +859,88 @@ export default function SuperAdminPage() {
               </div>
             </div>
 
-            {/* Community Multi-tenant Selector */}
+            {/* Community Multi-tenant Selector (With Custom Option) */}
             <div>
-              <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                Target Residential Community *
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  Target Community *
+                </label>
+                {formCommunityId === 'custom' && (
+                  <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                    Custom Society
+                  </span>
+                )}
+              </div>
               <select
                 value={formCommunityId}
                 onChange={(e) => setFormCommunityId(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
               >
-                {communities.map((comm) => (
-                  <option key={comm.id} value={comm.id}>
-                    {comm.name} ({comm.code})
+                <optgroup label="Registered Communities">
+                  {communitiesList.map((comm) => (
+                    <option key={comm.id} value={comm.id}>
+                      {comm.name} ({comm.code})
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Custom Option">
+                  <option value="custom" className="font-bold text-purple-700 bg-purple-50">
+                    ➕ Custom Residential Community (Type Society Details)...
                   </option>
-                ))}
+                </optgroup>
               </select>
+
+              {/* Custom Community Sub-card */}
+              {formCommunityId === 'custom' && (
+                <div className="mt-2 p-3 bg-purple-50/60 border border-purple-200 rounded-xl space-y-2 text-xs animate-in fade-in duration-150">
+                  <div className="text-[11px] font-bold text-purple-900 flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Custom Society Details</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Society Name</label>
+                      <input
+                        type="text"
+                        value={customCommName}
+                        onChange={(e) => setCustomCommName(e.target.value)}
+                        placeholder="e.g. Prestige Lakeside Habitat"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Society Code</label>
+                      <input
+                        type="text"
+                        value={customCommCode}
+                        onChange={(e) => setCustomCommCode(e.target.value)}
+                        placeholder="PLH-BLR"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-mono font-bold uppercase"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">City & State</label>
+                    <input
+                      type="text"
+                      value={customCommCity}
+                      onChange={(e) => setCustomCommCity(e.target.value)}
+                      placeholder="e.g. Bengaluru, Karnataka"
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                    />
+                  </div>
+                  <div className="text-[10px] text-purple-700 font-mono">
+                    Preview: <span className="font-bold">{customCommName} ({customCommCode}) • {customCommCity}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
             <div className="text-xs text-slate-500 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Directly calls Supabase Auth (<code className="text-slate-800 font-mono">auth.signUp</code>) with confirmed email and bcrypt hashing.</span>
+              <span>Directly calls Supabase Auth (<code className="text-slate-800 font-mono">auth.signUp</code>) with confirmed email, custom flat & community sync.</span>
             </div>
 
             <button
@@ -827,13 +1157,13 @@ export default function SuperAdminPage() {
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <h2 className="font-extrabold text-base text-slate-900">
-            Registered Residential Communities ({communities.length})
+            Registered Residential Communities ({communitiesList.length})
           </h2>
           <span className="text-xs text-slate-500 font-mono">Multi-Tenant Cloud RLS</span>
         </div>
 
         <div className="divide-y divide-slate-100">
-          {communities.map((comm, idx) => (
+          {communitiesList.map((comm, idx) => (
             <div key={comm.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-base shrink-0">

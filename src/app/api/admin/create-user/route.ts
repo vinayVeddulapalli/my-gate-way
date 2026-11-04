@@ -15,7 +15,9 @@ export async function POST(request: Request) {
       role, 
       resident_type, 
       flat_id, 
-      community_id 
+      flat_display,
+      community_id,
+      custom_flat
     } = body;
 
     if (!email || !password || !full_name || !role) {
@@ -92,7 +94,24 @@ export async function POST(request: Request) {
       console.warn('Supabase user_profiles upsert warning:', profileError.message);
     }
 
-    // 3. If flat_id assigned, link in public.flat_residents
+    // 3. If custom_flat provided, ensure flat exists in public.flats
+    if (custom_flat && custom_flat.id) {
+      try {
+        await supabase.from('flats').upsert({
+          id: custom_flat.id,
+          community_id: targetCommunityId,
+          block_id: custom_flat.block_id || 'c0000000-0000-0000-0000-000000000001',
+          flat_number: String(custom_flat.flat_number || '101'),
+          floor_number: Number(custom_flat.floor_number) || 1,
+          intercom_number: String(custom_flat.flat_number || '101'),
+          is_occupied: true
+        });
+      } catch (fErr) {
+        console.warn('Supabase custom flat upsert notice:', fErr);
+      }
+    }
+
+    // 4. If flat_id assigned, link in public.flat_residents
     if (flat_id) {
       const { error: flatError } = await supabase
         .from('flat_residents')
@@ -130,3 +149,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

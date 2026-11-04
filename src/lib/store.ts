@@ -2949,6 +2949,7 @@ class AppStore {
     role: UserRole;
     resident_type?: 'owner' | 'tenant' | 'family';
     flat_id?: string;
+    flat_display?: string;
     password?: string;
     community_id?: string;
   }): Promise<{ user: UserProfile; error?: string; supabaseSynced?: boolean }> {
@@ -2991,7 +2992,8 @@ class AppStore {
     }
 
     const flat = params.flat_id ? this.state.flats.find(f => f.id === params.flat_id) : undefined;
-    const flatDisplay = flat ? `${flat.block_name || 'Tower A'} • Floor ${flat.floor_number} • Flat ${flat.flat_number}` : undefined;
+    const computedFlatDisplay = flat ? `${flat.block_name || 'Tower A'} • Floor ${flat.floor_number} • Flat ${flat.flat_number}` : undefined;
+    const finalFlatDisplay = params.flat_display || computedFlatDisplay;
 
     const newUser: UserProfile = {
       id: authUserId,
@@ -3002,7 +3004,7 @@ class AppStore {
       role: params.role,
       resident_type: params.resident_type || (params.role === 'resident' ? 'owner' : undefined),
       flat_id: params.flat_id,
-      flat_display: flatDisplay,
+      flat_display: finalFlatDisplay,
       owned_flat_ids: params.flat_id ? [params.flat_id] : [],
       notification_push_enabled: true,
       notification_sms_enabled: false,
