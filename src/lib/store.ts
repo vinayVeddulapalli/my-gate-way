@@ -287,7 +287,7 @@ const defaultUsers: UserProfile[] = [
     id: 'e0000000-0000-0000-0000-000000000003',
     community_id: defaultCommunity.id,
     full_name: 'Ramesh Kumar',
-    email: 'ramesh.guard@palmmeadows.in',
+    email: 'guard@gatewaysecurity.in',
     phone: '+91 98765 43210',
     role: 'security_guard',
     notification_push_enabled: true,
@@ -299,7 +299,7 @@ const defaultUsers: UserProfile[] = [
     id: 'e0000000-0000-0000-0000-000000000004',
     community_id: defaultCommunity.id,
     full_name: 'Aarav Sharma',
-    email: 'aarav.sharma@palmmeadows.in',
+    email: 'owner@gatewaysecurity.in',
     phone: '+91 98111 22334',
     role: 'resident',
     resident_type: 'owner',
@@ -438,7 +438,7 @@ const defaultUsers: UserProfile[] = [
     id: 'e0000000-0000-0000-0000-000000000002',
     community_id: defaultCommunity.id,
     full_name: 'Rajesh Iyer',
-    email: 'rajesh.admin@prestige.in',
+    email: 'admin@gatewaysecurity.in',
     phone: '+91 98450 12345',
     role: 'community_admin',
     notification_push_enabled: true,
@@ -1072,18 +1072,19 @@ class AppStore {
           ? parsed.flats
           : defaultFlats;
 
-        // Ensure users have updated owned_flat_ids
+        // Ensure users have updated owned_flat_ids and synchronized emails
         const users = (parsed.users && Array.isArray(parsed.users) && parsed.users.length > 0)
           ? parsed.users.map((u: UserProfile) => {
-              if (u.role === 'resident') {
-                return {
-                  ...u,
+              const defaultMatch = defaultUsers.find(du => du.id === u.id);
+              return {
+                ...u,
+                email: defaultMatch?.email || u.email,
+                ...(u.role === 'resident' ? {
                   owned_flat_ids: (u.owned_flat_ids && u.owned_flat_ids.length >= defaultFlats.length)
                     ? u.owned_flat_ids
                     : defaultUsers[1].owned_flat_ids
-                };
-              }
-              return u;
+                } : {})
+              };
             })
           : defaultUsers;
 
@@ -1536,7 +1537,11 @@ class AppStore {
     const found = this.state.users.find(u => 
       u.id === identifier || 
       u.role === identifier || 
-      (u.email && u.email.toLowerCase() === lower)
+      (u.email && u.email.toLowerCase() === lower) ||
+      ((lower === 'guard@gatewaysecurity.in' || lower === 'ramesh.guard@palmmeadows.in') && u.role === 'security_guard') ||
+      ((lower === 'owner@gatewaysecurity.in' || lower === 'aarav.sharma@palmmeadows.in') && u.role === 'resident' && u.resident_type === 'owner') ||
+      ((lower === 'admin@gatewaysecurity.in' || lower === 'rajesh.admin@prestige.in') && u.role === 'community_admin') ||
+      (lower === 'superadmin@gatewaysecurity.in' && u.role === 'super_admin')
     );
     if (found) {
       this.state = { ...this.state, currentUser: found };
