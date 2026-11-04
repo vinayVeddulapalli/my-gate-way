@@ -216,14 +216,17 @@ export default function SuperAdminPage() {
       if (formRole === 'resident') {
         if (formFlatId === 'custom') {
           const newFlatId = 'd' + generateUUID().slice(1);
-          const blockName = customBlockName.trim() || 'Tower A';
-          const flatNum = customFlatNumber.trim() || '101';
-          const floorNum = Number(customFloorNumber) || 1;
+          const blockName = customBlockName.trim() || 'Tower D';
+          const flatNum = customFlatNumber.trim() || '1502';
+          const floorNum = Number(customFloorNumber) || 15;
+
+          const matchedBlock = state.blocks.find(b => b.name.toLowerCase() === blockName.toLowerCase());
+          const blockId = matchedBlock ? matchedBlock.id : (blockName.toLowerCase().includes('d') ? 'c0000000-0000-0000-0000-000000000004' : 'c0000000-0000-0000-0000-000000000001');
 
           const newFlat: Flat = {
             id: newFlatId,
             community_id: resolvedCommunityId,
-            block_id: 'c0000000-0000-0000-0000-000000000001',
+            block_id: blockId,
             block_name: blockName,
             flat_number: flatNum,
             floor_number: floorNum,
@@ -238,22 +241,22 @@ export default function SuperAdminPage() {
             maintenance_status: 'paid'
           };
 
-          // Register in local appStore
-          appStore.addFlat(newFlat);
-          resolvedFlatId = newFlatId;
+          // Register in local appStore and use guaranteed registered ID
+          const registeredFlat = appStore.addFlat(newFlat);
+          resolvedFlatId = registeredFlat.id;
           resolvedFlatDisplay = `${blockName} • Floor ${floorNum} • Flat ${flatNum}`;
-          customFlatPayload = newFlat;
+          customFlatPayload = registeredFlat;
 
           // Push to Supabase flats table
           if (isSupabaseConfigured && supabase) {
             try {
               await supabase.from('flats').upsert({
-                id: newFlat.id,
+                id: registeredFlat.id,
                 community_id: resolvedCommunityId,
-                block_id: newFlat.block_id,
-                flat_number: newFlat.flat_number,
-                floor_number: newFlat.floor_number,
-                intercom_number: newFlat.intercom_number,
+                block_id: registeredFlat.block_id,
+                flat_number: registeredFlat.flat_number,
+                floor_number: registeredFlat.floor_number,
+                intercom_number: registeredFlat.intercom_number,
                 is_occupied: true
               });
             } catch (fErr) {
@@ -726,9 +729,9 @@ export default function SuperAdminPage() {
               </div>
             </div>
 
-            {/* Flat Assignment (ALWAYS VISIBLE) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+            {/* Flat Assignment (Preset vs Custom Tabs) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
                 <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <Home className="w-3.5 h-3.5 text-blue-600" />
                   <span>Assigned Flat / Unit</span>
@@ -742,131 +745,258 @@ export default function SuperAdminPage() {
                     </span>
                   )}
                 </label>
-                {formFlatId === 'custom' && (
-                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                    Custom Mode
-                  </span>
-                )}
-              </div>
-              <select
-                value={formFlatId}
-                onChange={(e) => setFormFlatId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
-              >
-                {formRole !== 'resident' && (
-                  <option value="">None (Gate Terminal / Office Desk Only)</option>
-                )}
-                <optgroup label="Preset Society Units">
-                  {state.flats.map((flat) => (
-                    <option key={flat.id} value={flat.id}>
-                      {flat.block_name || 'Tower A'} • Floor {flat.floor_number} • Flat {flat.flat_number}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Custom Option">
-                  <option value="custom" className="font-bold text-blue-700 bg-blue-50">
-                    ➕ Custom Flat / Unit (Type Any Block & Number)...
-                  </option>
-                </optgroup>
-              </select>
 
-              {/* Custom Flat Inputs Sub-card */}
-              {formFlatId === 'custom' && (
-                <div className="mt-2 p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2 text-xs animate-in fade-in duration-150">
-                  <div className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
-                    <Home className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Custom Flat Details</span>
+                {/* Clear Mode Toggle Pills */}
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formFlatId === 'custom') setFormFlatId(state.flats[0]?.id || '');
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold transition-all cursor-pointer ${
+                      formFlatId !== 'custom'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🏢 Choose Existing
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormFlatId('custom')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold transition-all cursor-pointer ${
+                      formFlatId === 'custom'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-blue-700 hover:text-blue-900'
+                    }`}
+                  >
+                    ➕ Type Custom Flat
+                  </button>
+                </div>
+              </div>
+
+              {formFlatId !== 'custom' ? (
+                <div>
+                  <select
+                    value={formFlatId}
+                    onChange={(e) => setFormFlatId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
+                  >
+                    <option value="custom" className="font-bold text-blue-700 bg-blue-50">
+                      ➕ Need a different flat? Click to type custom flat...
+                    </option>
+                    {formRole !== 'resident' && (
+                      <option value="">None (Gate Terminal / Office Desk Only)</option>
+                    )}
+                    <optgroup label="Preset Society Units">
+                      {state.flats.map((flat) => (
+                        <option key={flat.id} value={flat.id}>
+                          {flat.block_name || 'Tower A'} • Floor {flat.floor_number} • Flat {flat.flat_number}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Select an existing society flat or switch to <strong>&ldquo;➕ Type Custom Flat&rdquo;</strong> above to enter any tower and unit.
+                  </p>
+                </div>
+              ) : (
+                /* Custom Flat Inputs Card */
+                <div className="p-3.5 bg-blue-50/70 border-2 border-blue-200 rounded-2xl space-y-2.5 text-xs animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-extrabold text-blue-950 flex items-center gap-1.5">
+                      <Home className="w-4 h-4 text-blue-600" />
+                      <span>Custom Flat Unit Details</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                      Custom Active
+                    </span>
                   </div>
+
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Block / Tower</label>
+                      <label className="text-[10px] font-bold text-slate-700 block mb-1">Block / Tower *</label>
                       <input
                         type="text"
                         value={customBlockName}
                         onChange={(e) => setCustomBlockName(e.target.value)}
                         placeholder="e.g. Tower D"
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                        className="w-full px-2.5 py-2 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-bold focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Floor</label>
+                      <label className="text-[10px] font-bold text-slate-700 block mb-1">Floor No. *</label>
                       <input
                         type="number"
                         value={customFloorNumber}
                         onChange={(e) => setCustomFloorNumber(e.target.value)}
-                        placeholder="14"
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                        placeholder="15"
+                        className="w-full px-2.5 py-2 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-bold focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Flat No.</label>
+                      <label className="text-[10px] font-bold text-slate-700 block mb-1">Flat / Unit No. *</label>
                       <input
                         type="text"
                         value={customFlatNumber}
                         onChange={(e) => setCustomFlatNumber(e.target.value)}
-                        placeholder="1402"
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium font-bold"
+                        placeholder="1502"
+                        className="w-full px-2.5 py-2 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-extrabold focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                   </div>
-                  <div className="text-[10px] text-blue-700 font-mono">
-                    Preview: <span className="font-bold">{customBlockName || 'Tower A'} • Floor {customFloorNumber || 1} • Flat {customFlatNumber || '101'}</span>
+
+                  <div className="p-2 bg-white rounded-lg border border-blue-200 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-600 font-medium">Live Flat Display:</span>
+                    <span className="font-extrabold text-blue-900 font-mono">
+                      {customBlockName || 'Tower D'} • Floor {customFloorNumber || 15} • Flat {customFlatNumber || '1502'}
+                    </span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Resident Occupancy Type (With Custom Option) */}
+            {/* Resident Occupancy Type (With 1-Click Pills & Custom Option) */}
             {formRole === 'resident' && (
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Occupancy Type *
-                </label>
-                <select
-                  value={formResidentType}
-                  onChange={(e) => setFormResidentType(e.target.value as 'owner' | 'tenant' | 'family' | 'custom')}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
-                >
-                  <option value="owner">Property Owner (Landlord / Master Access)</option>
-                  <option value="tenant">Tenant / Renter (Occupant Approval Access)</option>
-                  <option value="family">Family Member / Co-Resident</option>
-                  <option value="custom">➕ Custom Occupant Title (Type Custom)...</option>
-                </select>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Occupancy Type *
+                  </label>
+                  {formResidentType === 'custom' && (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      Custom Title
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setFormResidentType('owner')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      formResidentType === 'owner'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    👑 Property Owner
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormResidentType('tenant')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      formResidentType === 'tenant'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🔑 Renter / Tenant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormResidentType('family')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      formResidentType === 'family'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    👨‍👩‍👧 Family Member
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormResidentType('custom')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      formResidentType === 'custom'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                    }`}
+                  >
+                    ➕ Custom Type
+                  </button>
+                </div>
+
                 {formResidentType === 'custom' && (
                   <input
                     type="text"
                     value={customResidentType}
                     onChange={(e) => setCustomResidentType(e.target.value)}
-                    placeholder="e.g. Corporate Leaseholder / Guest"
-                    className="mt-2 w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
+                    placeholder="e.g. Corporate Leaseholder / Guest of Honor"
+                    className="mt-2 w-full px-3 py-2 rounded-lg border-2 border-amber-300 bg-amber-50/50 text-xs text-slate-900 font-bold focus:ring-2 focus:ring-amber-500"
                   />
                 )}
               </div>
             )}
 
-            {/* Guard Gate Terminal Assignment (With Custom Option) */}
+            {/* Guard Gate Terminal Assignment (With 1-Click Pills & Custom Option) */}
             {formRole === 'security_guard' && (
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Gate Terminal / Kiosk Desk *
-                </label>
-                <select
-                  value={guardGateOption}
-                  onChange={(e) => setGuardGateOption(e.target.value as 'main' | 'service' | 'pedestrian' | 'custom')}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
-                >
-                  <option value="main">Main Gate 1 Kiosk (Vehicles & Visitors)</option>
-                  <option value="service">South Service Gate 2 (Deliveries & Logistics)</option>
-                  <option value="pedestrian">Pedestrian Turnstile Gate</option>
-                  <option value="custom">➕ Custom Gate / Desk (Type Name)...</option>
-                </select>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Gate Terminal / Kiosk Desk *
+                  </label>
+                  {guardGateOption === 'custom' && (
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                      Custom Terminal
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setGuardGateOption('main')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      guardGateOption === 'main'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🚪 Main Gate 1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGuardGateOption('service')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      guardGateOption === 'service'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🚚 Service Gate 2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGuardGateOption('pedestrian')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      guardGateOption === 'pedestrian'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🚶 Turnstile Gate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGuardGateOption('custom')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      guardGateOption === 'custom'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                    }`}
+                  >
+                    ➕ Custom Gate Desk
+                  </button>
+                </div>
+
                 {guardGateOption === 'custom' && (
                   <input
                     type="text"
                     value={customGateName}
                     onChange={(e) => setCustomGateName(e.target.value)}
-                    placeholder="e.g. North Gate Express Logistics Desk"
-                    className="mt-2 w-full px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
+                    placeholder="e.g. Tower D Lobby Desk or North Gate 4"
+                    className="mt-2 w-full px-3 py-2 rounded-lg border-2 border-blue-300 bg-blue-50/50 text-xs text-slate-900 font-bold focus:ring-2 focus:ring-blue-600"
                   />
                 )}
               </div>
@@ -874,28 +1004,83 @@ export default function SuperAdminPage() {
 
             {/* Community Admin Office Designation (With Custom Option) */}
             {formRole === 'community_admin' && (
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Estate Office / Designation *
-                </label>
-                <select
-                  value={adminDesignation}
-                  onChange={(e) => setAdminDesignation(e.target.value as 'estate_manager' | 'security_supervisor' | 'facility_head' | 'rwa_board' | 'custom')}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-bold text-slate-900 bg-white"
-                >
-                  <option value="estate_manager">Estate Manager (Operations & Security)</option>
-                  <option value="security_supervisor">Security Supervisor (Shift Commander)</option>
-                  <option value="facility_head">Facilities & Maintenance Lead</option>
-                  <option value="rwa_board">RWA Committee / Board Member</option>
-                  <option value="custom">➕ Custom Office / Title...</option>
-                </select>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    Estate Office / Designation *
+                  </label>
+                  {adminDesignation === 'custom' && (
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                      Custom Title
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAdminDesignation('estate_manager')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      adminDesignation === 'estate_manager'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🏢 Estate Manager
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminDesignation('security_supervisor')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      adminDesignation === 'security_supervisor'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🛡️ Supervisor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminDesignation('facility_head')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      adminDesignation === 'facility_head'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    🔧 Facility Head
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminDesignation('rwa_board')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      adminDesignation === 'rwa_board'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    📋 RWA Board
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminDesignation('custom')}
+                    className={`p-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                      adminDesignation === 'custom'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                        : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
+                    }`}
+                  >
+                    ➕ Custom Title
+                  </button>
+                </div>
+
                 {adminDesignation === 'custom' && (
                   <input
                     type="text"
                     value={customAdminTitle}
                     onChange={(e) => setCustomAdminTitle(e.target.value)}
-                    placeholder="e.g. Chief Security Officer"
-                    className="mt-2 w-full px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50/40 text-xs text-slate-900 font-medium focus:ring-2 focus:ring-slate-900"
+                    placeholder="e.g. Chief Security Officer / Operations Director"
+                    className="mt-2 w-full px-3 py-2 rounded-lg border-2 border-purple-300 bg-purple-50/50 text-xs text-slate-900 font-bold focus:ring-2 focus:ring-purple-600"
                   />
                 )}
               </div>
@@ -918,75 +1103,100 @@ export default function SuperAdminPage() {
               </div>
             </div>
 
-            {/* Community Multi-tenant Selector (With Custom Option) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
+            {/* Community Multi-tenant Selector (Preset vs Custom Tabs) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
                 <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
                   Target Community *
                 </label>
-                {formCommunityId === 'custom' && (
-                  <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                    Custom Society
-                  </span>
-                )}
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formCommunityId === 'custom') setFormCommunityId(communitiesList[0]?.id || '');
+                    }}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold transition-all cursor-pointer ${
+                      formCommunityId !== 'custom'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🏢 Preset Society
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormCommunityId('custom')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold transition-all cursor-pointer ${
+                      formCommunityId === 'custom'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-purple-700 hover:text-purple-900'
+                    }`}
+                  >
+                    ➕ Custom Society
+                  </button>
+                </div>
               </div>
-              <select
-                value={formCommunityId}
-                onChange={(e) => setFormCommunityId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
-              >
-                <optgroup label="Registered Communities">
-                  {communitiesList.map((comm) => (
-                    <option key={comm.id} value={comm.id}>
-                      {comm.name} ({comm.code})
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Custom Option">
-                  <option value="custom" className="font-bold text-purple-700 bg-purple-50">
-                    ➕ Custom Residential Community (Type Society Details)...
-                  </option>
-                </optgroup>
-              </select>
 
-              {/* Custom Community Sub-card */}
-              {formCommunityId === 'custom' && (
-                <div className="mt-2 p-3 bg-purple-50/60 border border-purple-200 rounded-xl space-y-2 text-xs animate-in fade-in duration-150">
-                  <div className="text-[11px] font-bold text-purple-900 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5 text-purple-600" />
-                    <span>Custom Society Details</span>
+              {formCommunityId !== 'custom' ? (
+                <select
+                  value={formCommunityId}
+                  onChange={(e) => setFormCommunityId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 text-xs font-medium text-slate-900 bg-white"
+                >
+                  <option value="custom" className="font-bold text-purple-700 bg-purple-50">
+                    ➕ Need a different society? Click to type custom society...
+                  </option>
+                  <optgroup label="Registered Communities">
+                    {communitiesList.map((comm) => (
+                      <option key={comm.id} value={comm.id}>
+                        {comm.name} ({comm.code})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              ) : (
+                /* Custom Community Sub-card */
+                <div className="p-3 bg-purple-50/70 border-2 border-purple-200 rounded-2xl space-y-2 text-xs animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-extrabold text-purple-950 flex items-center gap-1">
+                      <Building2 className="w-4 h-4 text-purple-600" />
+                      <span>Custom Residential Society Details</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                      Custom Society
+                    </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Society Name</label>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Society Name *</label>
                       <input
                         type="text"
                         value={customCommName}
                         onChange={(e) => setCustomCommName(e.target.value)}
-                        placeholder="e.g. Prestige Lakeside Habitat"
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                        placeholder="e.g. Prestige Lakeside"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-bold"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Society Code</label>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Society Code *</label>
                       <input
                         type="text"
                         value={customCommCode}
                         onChange={(e) => setCustomCommCode(e.target.value)}
-                        placeholder="PLH-BLR"
-                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-mono font-bold uppercase"
+                        placeholder="e.g. PLH-BLR"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-bold uppercase"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-0.5">City & State</label>
-                    <input
-                      type="text"
-                      value={customCommCity}
-                      onChange={(e) => setCustomCommCity(e.target.value)}
-                      placeholder="e.g. Bengaluru, Karnataka"
-                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
-                    />
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 block mb-0.5">City & State</label>
+                      <input
+                        type="text"
+                        value={customCommCity}
+                        onChange={(e) => setCustomCommCity(e.target.value)}
+                        placeholder="e.g. Bengaluru, Karnataka"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-slate-900 font-medium"
+                      />
+                    </div>
                   </div>
                   <div className="text-[10px] text-purple-700 font-mono">
                     Preview: <span className="font-bold">{customCommName} ({customCommCode}) • {customCommCity}</span>

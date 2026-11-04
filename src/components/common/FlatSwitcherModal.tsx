@@ -53,18 +53,31 @@ export const FlatSwitcherModal: React.FC<FlatSwitcherModalProps> = ({
   if (!isOpen) return null;
 
   const currentUser = state.currentUser;
-  const currentFlat = state.flats.find(f => f.id === currentUser.flat_id) || state.flats[0];
+  let currentFlat = state.flats.find(f => f.id === currentUser.flat_id);
+  if (!currentFlat && currentUser.flat_display) {
+    currentFlat = state.flats.find(f => currentUser.flat_display?.includes(f.flat_number));
+  }
+  if (!currentFlat) {
+    currentFlat = state.flats[0];
+  }
 
-  // List of flats owned by resident in society portfolio
-  // If user has owned_flat_ids populated, use them; if not or if single, ensure all 10 portfolio flats are visible
+  // Strict flat ownership separation:
+  // Aarav Sharma has multi-flat portfolio (all 10 demo units).
+  // Other residents (like Sneha or new users) only see their own assigned unit(s)!
+  const isAarav = currentUser.id === 'e0000000-0000-0000-0000-000000000002' || 
+                  currentUser.email === 'aarav.sharma@palmmeadows.in' || 
+                  currentUser.email === 'owner@gatewaysecurity.in';
+
   const ownedFlats = (() => {
+    if (isAarav) {
+      return state.flats;
+    }
     const matched = state.flats.filter(f => 
       currentUser.owned_flat_ids?.includes(f.id) || 
-      f.owner_name === currentUser.full_name || 
-      f.owner_name === 'Aarav Sharma' ||
-      f.id === currentFlat.id
+      (f.owner_name && currentUser.full_name && f.owner_name.toLowerCase() === currentUser.full_name.toLowerCase()) || 
+      f.id === currentFlat?.id
     );
-    return matched.length > 1 ? matched : state.flats;
+    return matched.length > 0 ? matched : (currentFlat ? [currentFlat] : [state.flats[0]]);
   })();
 
   const selfFlats = ownedFlats.filter(f => f.occupancy_type === 'self_occupied' || f.id === DEFAULT_SELF_ID);

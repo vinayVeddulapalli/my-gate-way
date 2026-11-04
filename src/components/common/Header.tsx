@@ -81,7 +81,37 @@ export const Header: React.FC = () => {
   const isGuardRoute = pathname.startsWith('/guard');
   const guardDutyUser = state.users.find(u => u.role === 'security_guard') || state.currentUser;
   const activeHeaderUser = isGuardRoute ? guardDutyUser : state.currentUser;
-  const currentFlat = state.flats.find(f => f.id === state.currentUser.flat_id) || state.flats[0];
+  let currentFlat = state.flats.find(f => f.id === state.currentUser.flat_id);
+  if (!currentFlat && state.currentUser.flat_display) {
+    currentFlat = state.flats.find(f => state.currentUser.flat_display?.includes(f.flat_number));
+  }
+  if (!currentFlat) {
+    if (state.currentUser.role === 'resident' && state.currentUser.flat_display) {
+      const parts = state.currentUser.flat_display.split('•').map(s => s.trim());
+      const blockName = parts[0] || 'Tower D';
+      const floorNum = parseInt(parts[1]?.replace(/\D/g, '') || '1') || 1;
+      const flatNum = parts[2]?.replace(/[^\d\w]/g, '').replace('Flat', '').trim() || '1502';
+      currentFlat = {
+        id: state.currentUser.flat_id || 'custom-flat-1502',
+        community_id: state.currentUser.community_id || state.currentCommunity.id,
+        block_id: 'c0000000-0000-0000-0000-000000000004',
+        block_name: blockName,
+        flat_number: flatNum,
+        floor_number: floorNum,
+        intercom_number: flatNum,
+        is_occupied: true,
+        occupancy_type: state.currentUser.resident_type === 'tenant' ? 'rented' : 'self_occupied',
+        owner_name: state.currentUser.resident_type === 'owner' ? state.currentUser.full_name : undefined,
+        tenant_name: state.currentUser.resident_type === 'tenant' ? state.currentUser.full_name : undefined,
+        tenant_phone: state.currentUser.resident_type === 'tenant' ? state.currentUser.phone : undefined,
+        monthly_rent: 35000,
+        maintenance_amount: 5000,
+        maintenance_status: 'paid'
+      };
+    } else {
+      currentFlat = state.flats[0];
+    }
+  }
   const pendingRequestsCount = state.visitorRequests.filter(
     r => r.flat_id === currentFlat?.id && r.status === 'pending'
   ).length;

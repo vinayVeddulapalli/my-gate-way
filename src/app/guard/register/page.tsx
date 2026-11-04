@@ -82,8 +82,9 @@ export default function RegisterVisitorPage() {
     }
   }, [gates, blocks, selectedGateId, selectedBlockId]);
 
-  // Filter flats by selected block
-  const availableFlats = flats.filter(f => f.block_id === selectedBlockId);
+  // Filter flats by selected block (matching either by block_id or block_name)
+  const selectedBlock = blocks.find(b => b.id === selectedBlockId);
+  const availableFlats = flats.filter(f => f.block_id === selectedBlockId || (selectedBlock && f.block_name?.toLowerCase() === selectedBlock.name.toLowerCase()));
 
   // Auto-select first flat if current flat not in block
   useEffect(() => {

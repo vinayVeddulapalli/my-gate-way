@@ -62,7 +62,37 @@ export default function ResidentHomePage() {
   }
 
   const currentUser = state.currentUser;
-  const currentFlat = state.flats.find(f => f.id === currentUser.flat_id) || state.flats[0];
+  let currentFlat = state.flats.find(f => f.id === currentUser.flat_id);
+  if (!currentFlat && currentUser.flat_display) {
+    currentFlat = state.flats.find(f => currentUser.flat_display?.includes(f.flat_number));
+  }
+  if (!currentFlat) {
+    if (currentUser.role === 'resident' && currentUser.flat_display) {
+      const parts = currentUser.flat_display.split('•').map(s => s.trim());
+      const blockName = parts[0] || 'Tower D';
+      const floorNum = parseInt(parts[1]?.replace(/\D/g, '') || '1') || 1;
+      const flatNum = parts[2]?.replace(/[^\d\w]/g, '').replace('Flat', '').trim() || '1502';
+      currentFlat = {
+        id: currentUser.flat_id || 'custom-flat-1502',
+        community_id: currentUser.community_id || state.currentCommunity.id,
+        block_id: 'c0000000-0000-0000-0000-000000000004',
+        block_name: blockName,
+        flat_number: flatNum,
+        floor_number: floorNum,
+        intercom_number: flatNum,
+        is_occupied: true,
+        occupancy_type: currentUser.resident_type === 'tenant' ? 'rented' : 'self_occupied',
+        owner_name: currentUser.resident_type === 'owner' ? currentUser.full_name : undefined,
+        tenant_name: currentUser.resident_type === 'tenant' ? currentUser.full_name : undefined,
+        tenant_phone: currentUser.resident_type === 'tenant' ? currentUser.phone : undefined,
+        monthly_rent: 35000,
+        maintenance_amount: 5000,
+        maintenance_status: 'paid'
+      };
+    } else {
+      currentFlat = state.flats[0];
+    }
+  }
 
   // STRICT PRIVACY SEPARATION (Owner / Landlord vs Tenant / Renter)
   const isRentedFlat = currentFlat.occupancy_type === 'rented';

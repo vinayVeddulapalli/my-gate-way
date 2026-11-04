@@ -1067,36 +1067,106 @@ class AppStore {
       if (data) {
         const parsed = JSON.parse(data);
 
-        // Ensure flats array contains all 10 society portfolio flats
-        const flats = (parsed.flats && Array.isArray(parsed.flats) && parsed.flats.length >= defaultFlats.length)
-          ? parsed.flats
-          : defaultFlats;
+        // Merge default flats and any custom created flats so none are lost
+        const parsedFlats: Flat[] = (parsed.flats && Array.isArray(parsed.flats)) ? parsed.flats : [];
+        const baseFlatIds = new Set(defaultFlats.map(f => f.id));
+        const customSavedFlats = parsedFlats.filter(f => !baseFlatIds.has(f.id));
+        const flats = [...defaultFlats, ...customSavedFlats];
 
-        // Ensure users have updated owned_flat_ids and synchronized emails
+        // Ensure users have updated emails and strict flat boundaries
         const users = (parsed.users && Array.isArray(parsed.users) && parsed.users.length > 0)
           ? parsed.users.map((u: UserProfile) => {
               const defaultMatch = defaultUsers.find(du => du.id === u.id);
+              const isAarav = u.id === defaultUsers[1].id || 
+                              u.email === 'aarav.sharma@palmmeadows.in' || 
+                              u.email === 'owner@gatewaysecurity.in';
+
+              if (u.role === 'resident') {
+                if (isAarav) {
+                  return {
+                    ...u,
+                    email: defaultMatch?.email || u.email,
+                    owned_flat_ids: (u.owned_flat_ids && u.owned_flat_ids.length >= defaultFlats.length)
+                      ? u.owned_flat_ids
+                      : defaultUsers[1].owned_flat_ids
+                  };
+                }
+
+                // Custom resident (e.g. Sneha or new signup): preserve custom flat isolation
+                let matchingFlat = flats.find(f => f.id === u.flat_id);
+                if (!matchingFlat && u.flat_display) {
+                  matchingFlat = flats.find(f => u.flat_display?.includes(f.flat_number));
+                }
+
+                // If custom flat isn't in flats array yet, register it now
+                if (!matchingFlat && u.flat_display) {
+                  const parts = u.flat_display.split('•').map(s => s.trim());
+                  const blockName = parts[0] || 'Tower D';
+                  const floorNum = parseInt(parts[1]?.replace(/\D/g, '') || '1') || 1;
+                  const flatNum = parts[2]?.replace(/[^\d\w]/g, '').replace('Flat', '').trim() || '1502';
+                  const newFlatId = u.flat_id || ('d' + generateUUID().slice(1));
+                  matchingFlat = {
+                    id: newFlatId,
+                    community_id: u.community_id || defaultCommunity.id,
+                    block_id: 'c0000000-0000-0000-0000-000000000004',
+                    block_name: blockName,
+                    flat_number: flatNum,
+                    floor_number: floorNum,
+                    intercom_number: flatNum,
+                    is_occupied: true,
+                    occupancy_type: u.resident_type === 'tenant' ? 'rented' : 'self_occupied',
+                    owner_name: u.resident_type === 'owner' ? u.full_name : undefined,
+                    tenant_name: u.resident_type === 'tenant' ? u.full_name : undefined,
+                    tenant_phone: u.resident_type === 'tenant' ? u.phone : undefined,
+                    monthly_rent: 35000,
+                    maintenance_amount: 5000,
+                    maintenance_status: 'paid'
+                  };
+                  flats.push(matchingFlat);
+                }
+
+                const resolvedFlatId = matchingFlat ? matchingFlat.id : (u.flat_id || defaultFlats[0].id);
+
+                return {
+                  ...u,
+                  email: defaultMatch?.email || u.email,
+                  flat_id: resolvedFlatId,
+                  owned_flat_ids: [resolvedFlatId]
+                };
+              }
+
               return {
                 ...u,
-                email: defaultMatch?.email || u.email,
-                ...(u.role === 'resident' ? {
-                  owned_flat_ids: (u.owned_flat_ids && u.owned_flat_ids.length >= defaultFlats.length)
-                    ? u.owned_flat_ids
-                    : defaultUsers[1].owned_flat_ids
-                } : {})
+                email: defaultMatch?.email || u.email
               };
             })
           : defaultUsers;
 
         const baseCurrentUser = parsed.currentUser || defaultUsers[1];
-        const currentUser = (baseCurrentUser.role === 'resident')
-          ? {
+        const isCurrentAarav = baseCurrentUser.id === defaultUsers[1].id || 
+                               baseCurrentUser.email === 'aarav.sharma@palmmeadows.in' || 
+                               baseCurrentUser.email === 'owner@gatewaysecurity.in';
+
+        let currentUser: UserProfile;
+        if (baseCurrentUser.role === 'resident') {
+          if (isCurrentAarav) {
+            currentUser = {
               ...baseCurrentUser,
               owned_flat_ids: (baseCurrentUser.owned_flat_ids && baseCurrentUser.owned_flat_ids.length >= defaultFlats.length)
                 ? baseCurrentUser.owned_flat_ids
                 : defaultUsers[1].owned_flat_ids
-            }
-          : baseCurrentUser;
+            };
+          } else {
+            // Find corresponding updated user to preserve Sneha's Flat 1502
+            const matchingUser = users.find((u: UserProfile) => u.id === baseCurrentUser.id || (u.email && u.email === baseCurrentUser.email));
+            currentUser = matchingUser || {
+              ...baseCurrentUser,
+              owned_flat_ids: baseCurrentUser.flat_id ? [baseCurrentUser.flat_id] : (baseCurrentUser.owned_flat_ids || [])
+            };
+          }
+        } else {
+          currentUser = baseCurrentUser;
+        }
 
         const storedRequests: VisitorRequest[] = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests))
           ? parsed.visitorRequests.map((r: VisitorRequest) => {
@@ -1544,7 +1614,60 @@ class AppStore {
       (lower === 'superadmin@gatewaysecurity.in' && u.role === 'super_admin')
     );
     if (found) {
-      this.state = { ...this.state, currentUser: found };
+      let resolvedUser = { ...found };
+      let updatedFlats = [...this.state.flats];
+
+      if (found.role === 'resident') {
+        const isAarav = found.id === defaultUsers[1].id || 
+                        found.email === 'aarav.sharma@palmmeadows.in' || 
+                        found.email === 'owner@gatewaysecurity.in';
+
+        if (!isAarav) {
+          let matchingFlat = updatedFlats.find(f => f.id === found.flat_id);
+          if (!matchingFlat && found.flat_display) {
+            matchingFlat = updatedFlats.find(f => found.flat_display?.includes(f.flat_number));
+          }
+
+          if (!matchingFlat && found.flat_display) {
+            const parts = found.flat_display.split('•').map(s => s.trim());
+            const blockName = parts[0] || 'Tower D';
+            const floorNum = parseInt(parts[1]?.replace(/\D/g, '') || '1') || 1;
+            const flatNum = parts[2]?.replace(/[^\d\w]/g, '').replace('Flat', '').trim() || '1502';
+            const flatId = found.flat_id || ('d' + generateUUID().slice(1));
+            
+            matchingFlat = {
+              id: flatId,
+              community_id: found.community_id || this.state.currentCommunity.id,
+              block_id: 'c0000000-0000-0000-0000-000000000004',
+              block_name: blockName,
+              flat_number: flatNum,
+              floor_number: floorNum,
+              intercom_number: flatNum,
+              is_occupied: true,
+              occupancy_type: found.resident_type === 'tenant' ? 'rented' : 'self_occupied',
+              owner_name: found.resident_type === 'owner' ? found.full_name : undefined,
+              tenant_name: found.resident_type === 'tenant' ? found.full_name : undefined,
+              tenant_phone: found.resident_type === 'tenant' ? found.phone : undefined,
+              monthly_rent: 35000,
+              maintenance_amount: 5000,
+              maintenance_status: 'paid'
+            };
+            updatedFlats.push(matchingFlat);
+          }
+
+          if (matchingFlat) {
+            resolvedUser.flat_id = matchingFlat.id;
+            resolvedUser.owned_flat_ids = [matchingFlat.id];
+          }
+        }
+      }
+
+      this.state = { 
+        ...this.state, 
+        flats: updatedFlats,
+        currentUser: resolvedUser,
+        users: this.state.users.map(u => u.id === resolvedUser.id ? resolvedUser : u)
+      };
       this.saveToStorage(this.state);
       this.notify();
     }
@@ -2826,15 +2949,29 @@ class AppStore {
   // FLAT & UNIT MANAGEMENT ACTIONS
   // -------------------------------------------------------------
 
-  public addFlat(flat: Omit<Flat, 'id'>): Flat {
+  public addFlat(flat: Omit<Flat, 'id'> & { id?: string }): Flat {
+    const flatId = flat.id || generateUUID();
+    const existingIndex = this.state.flats.findIndex(f => 
+      f.id === flatId || 
+      (f.block_name === flat.block_name && f.flat_number === flat.flat_number)
+    );
+
     const newFlat: Flat = {
       ...flat,
-      id: generateUUID()
+      id: existingIndex >= 0 ? this.state.flats[existingIndex].id : flatId
     };
+
+    let updatedFlats: Flat[];
+    if (existingIndex >= 0) {
+      updatedFlats = [...this.state.flats];
+      updatedFlats[existingIndex] = { ...updatedFlats[existingIndex], ...newFlat };
+    } else {
+      updatedFlats = [...this.state.flats, newFlat];
+    }
 
     this.state = {
       ...this.state,
-      flats: [...this.state.flats, newFlat]
+      flats: updatedFlats
     };
 
     this.saveToStorage(this.state);
