@@ -82,6 +82,12 @@ export const Header: React.FC = () => {
   const guardDutyUser = state.users.find(u => u.role === 'security_guard') || state.currentUser;
   const activeHeaderUser = isGuardRoute ? guardDutyUser : state.currentUser;
   let currentFlat = state.flats.find(f => f.id === state.currentUser.flat_id);
+  if (state.currentUser.flat_display) {
+    const flatFromDisplay = state.flats.find(f => state.currentUser.flat_display?.includes(f.flat_number));
+    if (flatFromDisplay && (!currentFlat || currentFlat.flat_number !== flatFromDisplay.flat_number)) {
+      currentFlat = flatFromDisplay;
+    }
+  }
   if (!currentFlat && state.currentUser.flat_display) {
     currentFlat = state.flats.find(f => state.currentUser.flat_display?.includes(f.flat_number));
   }

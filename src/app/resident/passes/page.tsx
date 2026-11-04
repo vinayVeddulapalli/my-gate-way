@@ -4,21 +4,21 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { appStore, AppState } from '@/lib/store';
-import { 
-  Plus, 
-  Search, 
-  Calendar, 
-  ChevronDown, 
-  User, 
-  Package, 
-  Car, 
-  Wrench, 
-  ArrowLeft, 
-  Minus, 
-  CheckCircle2, 
-  Clock, 
-  Copy, 
-  Check, 
+import {
+  Plus,
+  Search,
+  Calendar,
+  ChevronDown,
+  User,
+  Package,
+  Car,
+  Wrench,
+  ArrowLeft,
+  Minus,
+  CheckCircle2,
+  Clock,
+  Copy,
+  Check,
   Sparkles,
   QrCode
 } from 'lucide-react';
@@ -61,7 +61,16 @@ export default function VisitorBookAndPassesPage() {
   }
 
   const currentUser = state.currentUser;
-  const currentFlat = state.flats.find(f => f.id === currentUser.flat_id) || state.flats[0];
+  let currentFlat = state.flats.find(f => f.id === currentUser.flat_id);
+  if (currentUser.flat_display) {
+    const flatFromDisplay = state.flats.find(f => currentUser.flat_display?.includes(f.flat_number));
+    if (flatFromDisplay && (!currentFlat || currentFlat.flat_number !== flatFromDisplay.flat_number)) {
+      currentFlat = flatFromDisplay;
+    }
+  }
+  if (!currentFlat) {
+    currentFlat = state.flats[0];
+  }
 
   // Visitor history and active requests for this flat
   const flatRequests = state.visitorRequests.filter(r => r.flat_id === currentFlat.id || r.flat_number === currentFlat.flat_number);
@@ -236,55 +245,50 @@ export default function VisitorBookAndPassesPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${
-                statusFilter === 'all'
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${statusFilter === 'all'
                   ? 'bg-[#FCEBE6] text-[#E05D44] font-bold'
                   : 'bg-white text-slate-600 border border-slate-200'
-              }`}
+                }`}
             >
               All visitors
             </button>
 
             <button
               onClick={() => setStatusFilter('pending')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${
-                statusFilter === 'pending'
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${statusFilter === 'pending'
                   ? 'bg-[#FCEBE6] text-[#E05D44] font-bold'
                   : 'bg-white text-slate-600 border border-slate-200'
-              }`}
+                }`}
             >
               Waiting
             </button>
 
             <button
               onClick={() => setStatusFilter('checked_in')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${
-                statusFilter === 'checked_in'
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${statusFilter === 'checked_in'
                   ? 'bg-[#FCEBE6] text-[#E05D44] font-bold'
                   : 'bg-white text-slate-600 border border-slate-200'
-              }`}
+                }`}
             >
               Inside
             </button>
 
             <button
               onClick={() => setStatusFilter('approved')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${
-                statusFilter === 'approved'
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${statusFilter === 'approved'
                   ? 'bg-[#FCEBE6] text-[#E05D44] font-bold'
                   : 'bg-white text-slate-600 border border-slate-200'
-              }`}
+                }`}
             >
               Approved
             </button>
 
             <button
               onClick={() => setStatusFilter('rejected')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${
-                statusFilter === 'rejected'
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-medium transition-colors cursor-pointer ${statusFilter === 'rejected'
                   ? 'bg-[#FCEBE6] text-[#E05D44] font-bold'
                   : 'bg-white text-slate-600 border border-slate-200'
-              }`}
+                }`}
             >
               Denied
             </button>
@@ -398,11 +402,10 @@ export default function VisitorBookAndPassesPage() {
                         key={t.id}
                         type="button"
                         onClick={() => setSelectedType(t.id as VisitorCategory)}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
-                          isSelected
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${isSelected
                             ? 'bg-[#FDEEEB] border-[#E05D44] text-[#E05D44]'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         <IconComponent className="w-5 h-5 mb-1" />
                         <span className="text-[11px] font-bold">{t.label}</span>

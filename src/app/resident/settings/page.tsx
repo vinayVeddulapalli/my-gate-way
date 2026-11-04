@@ -51,7 +51,16 @@ export default function ResidentProfileSettingsPage() {
   }
 
   const currentUser = state.currentUser;
-  const currentFlat = state.flats.find(f => f.id === currentUser.flat_id) || state.flats[0];
+  let currentFlat = state.flats.find(f => f.id === currentUser.flat_id);
+  if (currentUser.flat_display) {
+    const flatFromDisplay = state.flats.find(f => currentUser.flat_display?.includes(f.flat_number));
+    if (flatFromDisplay && (!currentFlat || currentFlat.flat_number !== flatFromDisplay.flat_number)) {
+      currentFlat = flatFromDisplay;
+    }
+  }
+  if (!currentFlat) {
+    currentFlat = state.flats[0];
+  }
 
   const handleSwitchToGuard = () => {
     const guardUser = state.users.find(u => u.role === 'security_guard') || state.users[0];

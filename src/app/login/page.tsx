@@ -76,7 +76,10 @@ function LoginForm() {
   const [regRole, setRegRole] = useState<UserRole>('resident');
   const [regFlatId, setRegFlatId] = useState('');
 
-  const state = appStore.getState();
+  const [state, setState] = useState(appStore.getState());
+  useEffect(() => {
+    return appStore.subscribe((s) => setState(s));
+  }, []);
   const flats = state.flats;
 
   // Sync tab if URL param changes
@@ -131,8 +134,10 @@ function LoginForm() {
 
         // Resilient Fallback: If Supabase GoTrue Auth has a server schema error
         // or user account is registered in public.user_profiles, authenticate seamlessly!
-        const matchedUser = state.users.find(u => 
+        const latestUsers = appStore.getState().users;
+        const matchedUser = latestUsers.find(u => 
           (u.email && u.email.toLowerCase() === cleanEmail.toLowerCase()) ||
+          (cleanEmail.includes('@') && u.email && u.email.toLowerCase().includes(cleanEmail.split('@')[0].toLowerCase())) ||
           u.id === localFallbackUserId
         );
 
@@ -149,7 +154,7 @@ function LoginForm() {
         if (error) {
           console.warn('Supabase Auth error:', error.message);
           setAuthError(
-            `${error.message}. Check your email and password, or use 1-Click Entry above.`
+            `${error.message}. Check your email and password, or use Quick Sign-In above.`
           );
           setLoading(false);
           return;

@@ -220,6 +220,20 @@ const defaultFlats: Flat[] = [
     occupancy_type: 'vacant', 
     maintenance_amount: 5200, 
     maintenance_status: 'paid' 
+  },
+  { 
+    id: 'd0000000-0000-0000-0000-000000001502', 
+    community_id: defaultCommunity.id, 
+    block_id: defaultBlocks[3].id, 
+    block_name: 'Tower D', 
+    flat_number: '1502', 
+    floor_number: 15, 
+    intercom_number: '1502', 
+    is_occupied: true, 
+    occupancy_type: 'self_occupied', 
+    owner_name: 'sneha', 
+    maintenance_amount: 5000, 
+    maintenance_status: 'paid' 
   }
 ];
 
@@ -396,6 +410,12 @@ class AppStore {
           // Custom user (like Sneha or Vinay Veddulapalli)
           if (u.role === 'resident') {
             let matchingFlat = flats.find(f => f.id === u.flat_id);
+            if (u.flat_display) {
+              const flatFromDisplay = flats.find(f => u.flat_display?.includes(f.flat_number));
+              if (flatFromDisplay && (!matchingFlat || matchingFlat.flat_number !== flatFromDisplay.flat_number)) {
+                matchingFlat = flatFromDisplay;
+              }
+            }
             if (!matchingFlat && u.flat_display) {
               matchingFlat = flats.find(f => u.flat_display?.includes(f.flat_number));
             }
@@ -476,11 +496,13 @@ class AppStore {
         let currentUser = users.find((u: UserProfile) => u.id === baseCurrentUser.id || (u.email && u.email.toLowerCase() === (baseCurrentUser.email || '').toLowerCase())) || defaultUsers[0];
 
         // Filter out dummy visitor requests (production baseline = 0 dummy records)
+        const mockNames = ['suresh patil', 'ananya sharma', 'bluedart', 'dunzo', 'swiggy', 'zomato', 'urban company', 'kavita', 't-cab', 'rajesh carpenter'];
         const visitorRequests = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests))
           ? parsed.visitorRequests.filter((r: VisitorRequest) => 
               !r.id.startsWith('f1000000-') && 
               r.id !== '09534460-7aa9-4dd9-9092-7af5f48ea570' && 
-              r.id !== '21ea12cd-e726-425b-8ad3-1f5c14b0c4da'
+              r.id !== '21ea12cd-e726-425b-8ad3-1f5c14b0c4da' &&
+              !mockNames.some(m => (r.visitor_name || '').toLowerCase().includes(m))
             )
           : [];
 
@@ -574,14 +596,95 @@ class AppStore {
 
   public async syncWithCloud(): Promise<{ success: boolean; count: number; error?: string }> {
     if (!isSupabaseConfigured || !supabase || typeof window === 'undefined') {
-      return { success: false, count: 0, error: 'Supabase credentials are not configured in .env.local' };
+      return { success: false, count: 0, error: 'Supabase credentials are not configured' };
     }
 
     try {
       this.state = { ...this.state, connectionStatus: 'connecting' };
       this.notify();
 
-      // 1. Remote Fetch of Visitor Requests
+      // 1. Remote Fetch of Flats (Syncs custom flats across phone and desktop)
+      let flats = [...this.state.flats];
+      try {
+        const { data: dbFlats, error: flatsErr } = await supabase.from('flats').select('*');
+        if (!flatsErr && dbFlats && dbFlats.length > 0) {
+          const flatMap = new Map<string, Flat>();
+          for (const f of flats) flatMap.set(f.id, f);
+          for (const row of dbFlats) {
+            const existing = flatMap.get(row.id);
+            const block = this.state.blocks.find(b => b.id === row.block_id);
+            flatMap.set(row.id, {
+              id: row.id,
+              community_id: row.community_id || this.state.currentCommunity.id,
+              block_id: row.block_id || (this.state.blocks[0]?.id || 'c0000000-0000-0000-0000-000000000001'),
+              block_name: block?.name || existing?.block_name || 'Tower A',
+              flat_number: String(row.flat_number),
+              floor_number: Number(row.floor_number) || 1,
+              intercom_number: String(row.intercom_number || row.flat_number),
+              is_occupied: row.is_occupied ?? true,
+              occupancy_type: existing?.occupancy_type || 'self_occupied',
+              owner_name: existing?.owner_name,
+              tenant_name: existing?.tenant_name,
+              tenant_phone: existing?.tenant_phone,
+              maintenance_amount: existing?.maintenance_amount || 4200,
+              maintenance_status: existing?.maintenance_status || 'paid'
+            });
+          }
+          flats = Array.from(flatMap.values());
+        }
+      } catch (fErr) {
+        console.warn('Flats cloud sync notice:', fErr);
+      }
+
+      // 2. Remote Fetch of User Profiles & Flat Residents (Syncs credentials to mobile!)
+      let users = [...this.state.users];
+      try {
+        const { data: dbUsers, error: usersErr } = await supabase.from('user_profiles').select('*');
+        if (!usersErr && dbUsers && dbUsers.length > 0) {
+          const { data: dbFlatResidents } = await supabase.from('flat_residents').select('*');
+          const userFlatMap = new Map<string, string>();
+          if (dbFlatResidents) {
+            for (const fr of dbFlatResidents) {
+              if (fr.user_id && fr.flat_id) {
+                userFlatMap.set(fr.user_id, fr.flat_id);
+              }
+            }
+          }
+
+          const userMap = new Map<string, UserProfile>();
+          for (const def of defaultUsers) userMap.set(def.id, def);
+          for (const u of users) userMap.set(u.id, u);
+
+          for (const row of dbUsers) {
+            const assignedFlatId = userFlatMap.get(row.id);
+            const flat = assignedFlatId ? flats.find(f => f.id === assignedFlatId) : undefined;
+            const flatDisplay = flat ? `${flat.block_name || 'Tower A'} • Floor ${flat.floor_number} • Flat ${flat.flat_number}` : undefined;
+            const existing = userMap.get(row.id);
+
+            userMap.set(row.id, {
+              id: row.id,
+              community_id: row.community_id || this.state.currentCommunity.id,
+              full_name: row.full_name || existing?.full_name || 'Resident',
+              email: row.email || existing?.email || '',
+              phone: row.phone || existing?.phone || '',
+              role: (row.role as UserRole) || existing?.role || 'resident',
+              resident_type: existing?.resident_type || (row.role === 'resident' ? 'owner' : undefined),
+              flat_id: assignedFlatId || existing?.flat_id,
+              flat_display: flatDisplay || existing?.flat_display,
+              owned_flat_ids: assignedFlatId ? [assignedFlatId] : (existing?.owned_flat_ids || []),
+              notification_push_enabled: true,
+              notification_sms_enabled: false,
+              notification_sound_enabled: true,
+              is_active: row.is_active ?? true
+            });
+          }
+          users = Array.from(userMap.values());
+        }
+      } catch (uErr) {
+        console.warn('User profiles cloud sync notice:', uErr);
+      }
+
+      // 3. Remote Fetch of Visitor Requests
       const { data: dbRequests, error: reqError } = await supabase
         .from('visitor_requests')
         .select('*')
@@ -596,10 +699,10 @@ class AppStore {
       let mappedRequests: VisitorRequest[] = [];
       if (dbRequests && dbRequests.length > 0) {
         mappedRequests = dbRequests.map((row) => {
-          const flat = this.state.flats.find(f => f.id === row.flat_id);
+          const flat = flats.find(f => f.id === row.flat_id);
           const gate = this.state.gates.find(g => g.id === row.gate_id);
-          const guard = this.state.users.find(u => u.id === row.guard_id);
-          const decisionMaker = this.state.users.find(u => u.id === row.decision_by);
+          const guard = users.find(u => u.id === row.guard_id);
+          const decisionMaker = users.find(u => u.id === row.decision_by);
 
           return {
             id: row.id,
@@ -648,7 +751,7 @@ class AppStore {
         });
       }
 
-      // Merge with baseline requests to ensure complete coverage
+      // Merge with baseline requests
       const requestMap = new Map<string, VisitorRequest>();
       for (const def of defaultVisitorRequests) {
         requestMap.set(def.id, def);
@@ -659,7 +762,7 @@ class AppStore {
       const combinedRequests = Array.from(requestMap.values())
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      // 2. Fetch Guest Passes
+      // 4. Fetch Guest Passes
       const { data: dbPasses } = await supabase
         .from('guest_passes')
         .select('*')
@@ -668,7 +771,7 @@ class AppStore {
       let mappedPasses: GuestPass[] = this.state.guestPasses;
       if (dbPasses && dbPasses.length > 0) {
         mappedPasses = dbPasses.map((p) => {
-          const flat = this.state.flats.find(f => f.id === p.flat_id);
+          const flat = flats.find(f => f.id === p.flat_id);
           return {
             id: p.id,
             community_id: p.community_id,
@@ -693,6 +796,8 @@ class AppStore {
 
       this.state = {
         ...this.state,
+        flats,
+        users,
         visitorRequests: combinedRequests,
         guestPasses: mappedPasses,
         connectionStatus: 'connected'
@@ -716,9 +821,9 @@ class AppStore {
     await this.syncWithCloud();
 
     try {
-      // Subscribe to Realtime WebSocket Channels
+      // Subscribe to Realtime WebSocket Channels across visitors, passes, users, and flats
       supabase
-        .channel('gateway_visitor_changes')
+        .channel('gateway_cross_device_sync')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'visitor_requests' },
@@ -731,6 +836,20 @@ class AppStore {
           { event: '*', schema: 'public', table: 'guest_passes' },
           (payload) => {
             this.handleRealtimePassPayload(payload);
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'user_profiles' },
+          () => {
+            this.syncWithCloud();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'flats' },
+          () => {
+            this.syncWithCloud();
           }
         )
         .subscribe((status) => {
@@ -937,6 +1056,12 @@ class AppStore {
 
         if (!isDefaultOwner) {
           let matchingFlat = updatedFlats.find(f => f.id === found.flat_id);
+          if (found.flat_display) {
+            const flatFromDisplay = updatedFlats.find(f => found.flat_display?.includes(f.flat_number));
+            if (flatFromDisplay && (!matchingFlat || matchingFlat.flat_number !== flatFromDisplay.flat_number)) {
+              matchingFlat = flatFromDisplay;
+            }
+          }
           if (!matchingFlat && found.flat_display) {
             matchingFlat = updatedFlats.find(f => found.flat_display?.includes(f.flat_number));
           }
@@ -1055,6 +1180,22 @@ class AppStore {
 
     this.saveToStorage(this.state);
     this.notify();
+
+    // Async push to Supabase public.flats
+    if (isSupabaseConfigured && supabase) {
+      Promise.resolve(supabase.from('flats').upsert({
+        id: newFlat.id,
+        community_id: newFlat.community_id || this.state.currentCommunity.id,
+        block_id: newFlat.block_id,
+        flat_number: newFlat.flat_number,
+        floor_number: newFlat.floor_number,
+        intercom_number: newFlat.intercom_number,
+        is_occupied: newFlat.is_occupied ?? true
+      })).then((res: any) => {
+        if (res?.error) console.warn('Supabase flat sync notice:', res.error.message);
+      }).catch((err: any) => console.warn('Supabase flat sync exception:', err));
+    }
+
     return newFlat;
   }
 
@@ -2310,6 +2451,22 @@ class AppStore {
 
     this.saveToStorage(this.state);
     this.notify();
+
+    // Async push to Supabase public.flats
+    if (isSupabaseConfigured && supabase) {
+      Promise.resolve(supabase.from('flats').upsert({
+        id: newFlat.id,
+        community_id: newFlat.community_id || this.state.currentCommunity.id,
+        block_id: newFlat.block_id,
+        flat_number: newFlat.flat_number,
+        floor_number: newFlat.floor_number,
+        intercom_number: newFlat.intercom_number,
+        is_occupied: newFlat.is_occupied ?? true
+      })).then((res: any) => {
+        if (res?.error) console.warn('Supabase flat sync notice:', res.error.message);
+      }).catch((err: any) => console.warn('Supabase flat sync exception:', err));
+    }
+
     return newFlat;
   }
 

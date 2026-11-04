@@ -63,6 +63,12 @@ export default function ResidentHomePage() {
 
   const currentUser = state.currentUser;
   let currentFlat = state.flats.find(f => f.id === currentUser.flat_id);
+  if (currentUser.flat_display) {
+    const flatFromDisplay = state.flats.find(f => currentUser.flat_display?.includes(f.flat_number));
+    if (flatFromDisplay && (!currentFlat || currentFlat.flat_number !== flatFromDisplay.flat_number)) {
+      currentFlat = flatFromDisplay;
+    }
+  }
   if (!currentFlat && currentUser.flat_display) {
     currentFlat = state.flats.find(f => currentUser.flat_display?.includes(f.flat_number));
   }

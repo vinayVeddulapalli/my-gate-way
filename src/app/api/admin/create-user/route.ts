@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const defaultSupabaseUrl = 'https://lxiqquskupxdteasmfrw.supabase.co';
+const defaultSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4aXFxdXNrdXB4ZHRlYXNtZnJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4Mjg1MzgsImV4cCI6MjEwODQwNDUzOH0.bBKZ455Iukxj8M7wTJX4jEwLL2iUzGJk_Wgsn0313jM';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || defaultSupabaseUrl;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || defaultSupabaseAnonKey;
 
 export async function POST(request: Request) {
   try {

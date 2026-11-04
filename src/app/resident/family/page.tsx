@@ -44,7 +44,16 @@ export default function FamilyMembersPage() {
     return appStore.subscribe((s) => setState(s));
   }, []);
 
-  const currentFlat = state.flats.find(f => f.id === state.currentUser.flat_id) || state.flats[0];
+  let currentFlat = state.flats.find(f => f.id === state.currentUser.flat_id);
+  if (state.currentUser.flat_display) {
+    const flatFromDisplay = state.flats.find(f => state.currentUser.flat_display?.includes(f.flat_number));
+    if (flatFromDisplay && (!currentFlat || currentFlat.flat_number !== flatFromDisplay.flat_number)) {
+      currentFlat = flatFromDisplay;
+    }
+  }
+  if (!currentFlat) {
+    currentFlat = state.flats[0];
+  }
 
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();

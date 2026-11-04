@@ -4,15 +4,15 @@ import React, { useState, useEffect, use, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { appStore, AppState } from '@/lib/store';
-import { 
-  ArrowLeft, 
-  User, 
-  Building2, 
-  Phone, 
-  AlignLeft, 
-  Users, 
-  CheckCircle2, 
-  LogIn, 
+import {
+  ArrowLeft,
+  User,
+  Building2,
+  Phone,
+  AlignLeft,
+  Users,
+  CheckCircle2,
+  LogIn,
   Building
 } from 'lucide-react';
 import { VisitorRequest } from '@/types';
