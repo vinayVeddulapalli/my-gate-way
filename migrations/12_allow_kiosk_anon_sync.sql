@@ -13,12 +13,12 @@
 -- ============================================================================
 
 -- 1. Ensure all standard blocks exist in public.buildings_blocks
-INSERT INTO public.buildings_blocks (id, community_id, name, block_code, total_floors)
+INSERT INTO public.buildings_blocks (id, community_id, name, total_floors)
 VALUES 
-    ('c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Tower A - Aspen', 'T-A', 14),
-    ('c0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Tower B - Begonia', 'T-B', 14),
-    ('c0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Tower C - Cedar', 'T-C', 10),
-    ('c0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Tower D - Daffodil', 'T-D', 18)
+    ('c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Tower A - Aster', 14),
+    ('c0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Tower B - Begonia', 14),
+    ('c0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Tower C - Carnation', 18),
+    ('c0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Tower D - Daffodil', 18)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Ensure all standard flats exist in public.flats
@@ -54,9 +54,9 @@ ON CONFLICT (id) DO UPDATE SET
     is_active = true;
 
 -- Ensure Resident Owner is mapped to Flat 1204
-INSERT INTO public.flat_residents (flat_id, user_id, is_primary_owner, is_approved)
-VALUES ('d0000000-0000-0000-0000-000000001204', 'e0000000-0000-0000-0000-000000000004', true, true)
-ON CONFLICT DO NOTHING;
+INSERT INTO public.flat_residents (id, flat_id, user_id, is_primary_owner, is_approved)
+VALUES ('e76dec29-102a-4b0d-b87d-c28a02f31204', 'd0000000-0000-0000-0000-000000001204', 'e0000000-0000-0000-0000-000000000004', true, true)
+ON CONFLICT (id) DO NOTHING;
 
 -- 4. Clear out mock dummy visitor requests from Supabase
 DELETE FROM public.visitor_requests 
@@ -99,3 +99,4 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN NULL;
     END;
 END $$;
+
