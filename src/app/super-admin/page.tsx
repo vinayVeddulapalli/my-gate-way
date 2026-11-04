@@ -35,6 +35,7 @@ import {
 export default function SuperAdminPage() {
   const router = useRouter();
   const [state, setState] = useState<AppState>(appStore.getState());
+  const [mounted, setMounted] = useState(false);
 
   // Form State
   const [formName, setFormName] = useState('');
@@ -60,6 +61,7 @@ export default function SuperAdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    setMounted(true);
     return appStore.subscribe((s) => setState(s));
   }, []);
 
@@ -103,7 +105,6 @@ export default function SuperAdminPage() {
     try {
       // 1. Try server-side Supabase API route for robust Auth & DB persistence
       let apiSuccess = false;
-      let createdAuthUserId = '';
       
       try {
         const res = await fetch('/api/admin/create-user', {
@@ -124,7 +125,6 @@ export default function SuperAdminPage() {
         const data = await res.json();
         if (data.success && data.user) {
           apiSuccess = true;
-          createdAuthUserId = data.user.id;
         } else if (data.error && !data.error.includes('duplicate')) {
           console.warn('API route notice:', data.error);
         }
@@ -251,6 +251,21 @@ export default function SuperAdminPage() {
       status: 'Active'
     }
   ];
+
+  // Prevent SSR hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
+        <div className="bg-[#0B132B] h-36 rounded-3xl animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white h-24 rounded-2xl border border-slate-200 animate-pulse" />
+          ))}
+        </div>
+        <div className="bg-white h-96 rounded-3xl border border-slate-200 animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 space-y-6">
@@ -701,7 +716,7 @@ export default function SuperAdminPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredUsers.map((user) => {
-                const isCurrent = state.currentUser.id === user.id;
+                const isCurrent = state.currentUser?.id === user.id;
                 const portalPath = getPortalLinkForRole(user.role);
 
                 return (
