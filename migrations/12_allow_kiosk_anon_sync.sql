@@ -58,11 +58,6 @@ INSERT INTO public.flat_residents (id, flat_id, user_id, is_primary_owner, is_ap
 VALUES ('e76dec29-102a-4b0d-b87d-c28a02f31204', 'd0000000-0000-0000-0000-000000001204', 'e0000000-0000-0000-0000-000000000004', true, true)
 ON CONFLICT (id) DO NOTHING;
 
--- 4. Clear out mock dummy visitor requests from Supabase
-DELETE FROM public.visitor_requests 
-WHERE visitor_name IN ('rathod', 'sneha', 'Rahul Kumar', 'Dunzo', 'BlueDart', 'Swiggy', 'Zomato', 'Urban Company');
-
--- 5. Enable Cross-Device Kiosk and Mobile Sync
 -- Disable RLS on application tables so that anon & authenticated clients (phones, laptops, kiosks)
 -- can create users, register visitors, add flats, and approve entries seamlessly!
 ALTER TABLE public.communities DISABLE ROW LEVEL SECURITY;

@@ -220,20 +220,6 @@ const defaultFlats: Flat[] = [
     occupancy_type: 'vacant', 
     maintenance_amount: 5200, 
     maintenance_status: 'paid' 
-  },
-  { 
-    id: 'd0000000-0000-0000-0000-000000001502', 
-    community_id: defaultCommunity.id, 
-    block_id: defaultBlocks[3].id, 
-    block_name: 'Tower D', 
-    flat_number: '1502', 
-    floor_number: 15, 
-    intercom_number: '1502', 
-    is_occupied: true, 
-    occupancy_type: 'self_occupied', 
-    owner_name: 'sneha', 
-    maintenance_amount: 5000, 
-    maintenance_status: 'paid' 
   }
 ];
 
@@ -410,12 +396,6 @@ class AppStore {
           // Custom user (like Sneha or Vinay Veddulapalli)
           if (u.role === 'resident') {
             let matchingFlat = flats.find(f => f.id === u.flat_id);
-            if (u.flat_display) {
-              const flatFromDisplay = flats.find(f => u.flat_display?.includes(f.flat_number));
-              if (flatFromDisplay && (!matchingFlat || matchingFlat.flat_number !== flatFromDisplay.flat_number)) {
-                matchingFlat = flatFromDisplay;
-              }
-            }
             if (!matchingFlat && u.flat_display) {
               matchingFlat = flats.find(f => u.flat_display?.includes(f.flat_number));
             }
@@ -496,13 +476,11 @@ class AppStore {
         let currentUser = users.find((u: UserProfile) => u.id === baseCurrentUser.id || (u.email && u.email.toLowerCase() === (baseCurrentUser.email || '').toLowerCase())) || defaultUsers[0];
 
         // Filter out dummy visitor requests (production baseline = 0 dummy records)
-        const mockNames = ['suresh patil', 'ananya sharma', 'bluedart', 'dunzo', 'swiggy', 'zomato', 'urban company', 'kavita', 't-cab', 'rajesh carpenter'];
         const visitorRequests = (parsed.visitorRequests && Array.isArray(parsed.visitorRequests))
           ? parsed.visitorRequests.filter((r: VisitorRequest) => 
               !r.id.startsWith('f1000000-') && 
               r.id !== '09534460-7aa9-4dd9-9092-7af5f48ea570' && 
-              r.id !== '21ea12cd-e726-425b-8ad3-1f5c14b0c4da' &&
-              !mockNames.some(m => (r.visitor_name || '').toLowerCase().includes(m))
+              r.id !== '21ea12cd-e726-425b-8ad3-1f5c14b0c4da'
             )
           : [];
 
@@ -531,9 +509,52 @@ class AppStore {
           ? parsed.auditLogs.filter((a: AuditLog) => !a.id.startsWith('al-00000000-'))
           : [];
 
+        // Auto-enrich flat occupancy and occupant contacts with registered user profiles
+        const enrichedFlats = flats.map(f => {
+          const flatResidents = users.filter(u => 
+            u.role === 'resident' && (
+              u.flat_id === f.id || 
+              (u.flat_display && u.flat_display.includes(`Flat ${f.flat_number}`)) ||
+              (u.owned_flat_ids && u.owned_flat_ids.includes(f.id))
+            )
+          );
+          const tenantUser = flatResidents.find(u => u.resident_type === 'tenant');
+          const ownerUser = flatResidents.find(u => u.resident_type === 'owner' || !u.resident_type);
+          
+          if (tenantUser) {
+            return {
+              ...f,
+              is_occupied: true,
+              occupancy_type: 'rented' as const,
+              tenant_name: tenantUser.full_name,
+              tenant_phone: tenantUser.phone,
+              owner_name: ownerUser?.full_name || f.owner_name || 'Resident Owner',
+              primary_resident_name: tenantUser.full_name,
+              primary_resident_phone: tenantUser.phone
+            };
+          } else if (ownerUser) {
+            return {
+              ...f,
+              is_occupied: true,
+              occupancy_type: 'self_occupied' as const,
+              owner_name: ownerUser.full_name,
+              tenant_name: undefined,
+              tenant_phone: undefined,
+              primary_resident_name: ownerUser.full_name,
+              primary_resident_phone: ownerUser.phone
+            };
+          } else {
+            return {
+              ...f,
+              is_occupied: f.is_occupied ?? false,
+              occupancy_type: f.is_occupied ? (f.occupancy_type || 'self_occupied') : 'vacant' as const
+            };
+          }
+        });
+
         const upgradedState: AppState = {
           ...parsed,
-          flats,
+          flats: enrichedFlats,
           users,
           currentUser,
           visitorRequests,
@@ -679,6 +700,43 @@ class AppStore {
             });
           }
           users = Array.from(userMap.values());
+
+          // Enrich flats with resolved cloud users
+          flats = flats.map(f => {
+            const flatResidents = users.filter(u => 
+              u.role === 'resident' && (
+                u.flat_id === f.id || 
+                (u.flat_display && u.flat_display.includes(`Flat ${f.flat_number}`)) ||
+                (u.owned_flat_ids && u.owned_flat_ids.includes(f.id))
+              )
+            );
+            const tenantUser = flatResidents.find(u => u.resident_type === 'tenant');
+            const ownerUser = flatResidents.find(u => u.resident_type === 'owner' || !u.resident_type);
+            if (tenantUser) {
+              return {
+                ...f,
+                is_occupied: true,
+                occupancy_type: 'rented' as const,
+                tenant_name: tenantUser.full_name,
+                tenant_phone: tenantUser.phone,
+                owner_name: ownerUser?.full_name || f.owner_name || 'Resident Owner',
+                primary_resident_name: tenantUser.full_name,
+                primary_resident_phone: tenantUser.phone
+              };
+            } else if (ownerUser) {
+              return {
+                ...f,
+                is_occupied: true,
+                occupancy_type: 'self_occupied' as const,
+                owner_name: ownerUser.full_name,
+                tenant_name: undefined,
+                tenant_phone: undefined,
+                primary_resident_name: ownerUser.full_name,
+                primary_resident_phone: ownerUser.phone
+              };
+            }
+            return f;
+          });
         }
       } catch (uErr) {
         console.warn('User profiles cloud sync notice:', uErr);
@@ -1056,12 +1114,6 @@ class AppStore {
 
         if (!isDefaultOwner) {
           let matchingFlat = updatedFlats.find(f => f.id === found.flat_id);
-          if (found.flat_display) {
-            const flatFromDisplay = updatedFlats.find(f => found.flat_display?.includes(f.flat_number));
-            if (flatFromDisplay && (!matchingFlat || matchingFlat.flat_number !== flatFromDisplay.flat_number)) {
-              matchingFlat = flatFromDisplay;
-            }
-          }
           if (!matchingFlat && found.flat_display) {
             matchingFlat = updatedFlats.find(f => found.flat_display?.includes(f.flat_number));
           }
@@ -1180,22 +1232,6 @@ class AppStore {
 
     this.saveToStorage(this.state);
     this.notify();
-
-    // Async push to Supabase public.flats
-    if (isSupabaseConfigured && supabase) {
-      Promise.resolve(supabase.from('flats').upsert({
-        id: newFlat.id,
-        community_id: newFlat.community_id || this.state.currentCommunity.id,
-        block_id: newFlat.block_id,
-        flat_number: newFlat.flat_number,
-        floor_number: newFlat.floor_number,
-        intercom_number: newFlat.intercom_number,
-        is_occupied: newFlat.is_occupied ?? true
-      })).then((res: any) => {
-        if (res?.error) console.warn('Supabase flat sync notice:', res.error.message);
-      }).catch((err: any) => console.warn('Supabase flat sync exception:', err));
-    }
-
     return newFlat;
   }
 
@@ -2451,22 +2487,6 @@ class AppStore {
 
     this.saveToStorage(this.state);
     this.notify();
-
-    // Async push to Supabase public.flats
-    if (isSupabaseConfigured && supabase) {
-      Promise.resolve(supabase.from('flats').upsert({
-        id: newFlat.id,
-        community_id: newFlat.community_id || this.state.currentCommunity.id,
-        block_id: newFlat.block_id,
-        flat_number: newFlat.flat_number,
-        floor_number: newFlat.floor_number,
-        intercom_number: newFlat.intercom_number,
-        is_occupied: newFlat.is_occupied ?? true
-      })).then((res: any) => {
-        if (res?.error) console.warn('Supabase flat sync notice:', res.error.message);
-      }).catch((err: any) => console.warn('Supabase flat sync exception:', err));
-    }
-
     return newFlat;
   }
 
@@ -2659,8 +2679,36 @@ class AppStore {
       created_at: new Date().toISOString()
     };
 
+    let updatedFlats = [...this.state.flats];
+    if (params.flat_id && newUser.role === 'resident') {
+      const flatIndex = updatedFlats.findIndex(f => 
+        f.id === params.flat_id || 
+        (finalFlatDisplay && finalFlatDisplay.includes(`Flat ${f.flat_number}`))
+      );
+      if (flatIndex >= 0) {
+        const targetFlat = { ...updatedFlats[flatIndex] };
+        targetFlat.is_occupied = true;
+        if (newUser.resident_type === 'tenant') {
+          targetFlat.occupancy_type = 'rented';
+          targetFlat.tenant_name = newUser.full_name;
+          targetFlat.tenant_phone = newUser.phone;
+          targetFlat.primary_resident_name = newUser.full_name;
+          targetFlat.primary_resident_phone = newUser.phone;
+        } else {
+          targetFlat.owner_name = newUser.full_name;
+          if (targetFlat.occupancy_type !== 'rented') {
+            targetFlat.occupancy_type = 'self_occupied';
+            targetFlat.primary_resident_name = newUser.full_name;
+            targetFlat.primary_resident_phone = newUser.phone;
+          }
+        }
+        updatedFlats[flatIndex] = targetFlat;
+      }
+    }
+
     this.state = {
       ...this.state,
+      flats: updatedFlats,
       users: [...this.state.users, newUser],
       auditLogs: [newLog, ...this.state.auditLogs]
     };
